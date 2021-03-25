@@ -1443,6 +1443,13 @@ static jl_cgval_t typed_load(jl_codectx_t &ctx, Value *ptr, Value *idx_0based, j
     Type *elty = isboxed ? T_prjlvalue : julia_type_to_llvm(ctx, jltype);
     if (type_is_ghost(elty))
         return ghostValue(jltype);
+    AllocaInst *intcast = NULL;
+    if (!isboxed && Order != AtomicOrdering::NotAtomic && !elty->isIntOrPtrTy() && !elty->isFloatingPointTy()) {
+        const DataLayout &DL = jl_data_layout;
+        unsigned nb = DL.getTypeSizeInBits(elty);
+        intcast = ctx.builder.CreateAlloca(elty);
+        elty = Type::getIntNTy(jl_LLVMContext, nb);
+    }
     Type *ptrty = PointerType::get(elty, ptr->getType()->getPointerAddressSpace());
     Value *data;
     if (ptr->getType() != ptrty)
@@ -1469,6 +1476,10 @@ static jl_cgval_t typed_load(jl_codectx_t &ctx, Value *ptr, Value *idx_0based, j
             load = maybe_mark_load_dereferenceable(load, true, jltype);
         if (tbaa)
             load = tbaa_decorate(tbaa, load);
+        if (intcast) {
+            ctx.builder.CreateStore(load, ctx.builder.CreateBitCast(intcast, load->getType()->getPointerTo()));
+            load = ctx.builder.CreateLoad(intcast);
+        }
         if (maybe_null_if_boxed) {
             Value *first_ptr = isboxed ? load : extract_first_ptr(ctx, load);
             if (first_ptr)
@@ -1494,6 +1505,11 @@ static void typed_store(jl_codectx_t &ctx,
     Type *elty = isboxed ? T_prjlvalue : julia_type_to_llvm(ctx, jltype);
     if (type_is_ghost(elty))
         return;
+    if (!isboxed && Order != AtomicOrdering::NotAtomic && !elty->isIntOrPtrTy() && !elty->isFloatingPointTy()) {
+        const DataLayout &DL = jl_data_layout;
+        unsigned nb = DL.getTypeSizeInBits(elty);
+        elty = Type::getIntNTy(jl_LLVMContext, nb);
+    }
     Value *r;
     if (!isboxed)
         r = emit_unbox(ctx, elty, rhs, jltype);
