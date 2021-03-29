@@ -456,9 +456,10 @@ Mark `var` or `ex` as being performed atomically, if `ex` is a supported express
 See [atomics](#man-atomics) in the manual for more details.
 
 ```jldoctest
-julia> mutable struct Atomic{T}; @atomic x::T; end;
+julia> mutable struct Atomic{T}; @atomic x::T; end
 
-julia> a = Atomic(1);
+julia> a = Atomic(1)
+Atomic{Int64}(1)
 
 julia> @atomic a.x = 2 # set field x of a
 2
@@ -467,18 +468,19 @@ julia> @atomic a.x # fetch field x or a
 2
 
 julia> @atomic a.x += 1 # increment field x of a
+3
 
-julia> y = 3; @atomic a.x, z = y, a.x # swap field x of a with y and put the old value in z
-(3, 2)
-
-julia> z
-2
-
-julia> y = 4; @atomic a.x, z = y, _ # swap field x of a with y and put the old value in z
+julia> y = 4; @atomic a.x, z = y, a.x # swap field x of a with y and put the old value in z
 (4, 3)
 
 julia> z
 3
+
+julia> y = 5; @atomic a.x, z = y, _ # swap field x of a with y and put the old value in z
+(5, 4)
+
+julia> z
+4
 ```
 
 The following forms are also planned, but not yet implemented:

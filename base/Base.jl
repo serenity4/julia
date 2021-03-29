@@ -54,10 +54,10 @@ atomic_setproperty!(x::Tuple, f::Int, v, order::Symbol) = setfield!(x, f, v, ord
 atomic_getproperty(x, f::Symbol, order::Symbol) = (@_inline_meta; getfield(x, f, order))
 atomic_setproperty!(x, f::Symbol, v, order::Symbol) = (@_inline_meta; setfield!(x, f, convert(fieldtype(typeof(x), f), v), order))
 
-#atomic_swapproperty!(x, f::Symbol, v, order::Symbol) = Core.swapfield!(x, f, convert(fieldtype(typeof(x), f), v), order)
-#atomic_modifyproperty!(x, f::Symbol, op, v, order::Symbol) = Core.modifyfield!(x, f, op, v, order)
-#atomic_cmpswapproperty!(x, f::Symbol, cmp, expected, desired, success_order::Symbol, fail_order::Symbol=success_order) =
-#   Core.cmpswapfield!(x, f, cmp, expected, convert(fieldtype(typeof(x), f), desired), success_order, fail_order)
+atomic_swapproperty!(x, f::Symbol, v, order::Symbol) = Core.swapfield!(x, f, convert(fieldtype(typeof(x), f), v), order)
+atomic_modifyproperty!(x, f::Symbol, op, v, order::Symbol) = Core.modifyfield!(x, f, op, v, order)
+atomic_cmpswapproperty!(x, f::Symbol, expected, desired, success_order::Symbol, fail_order::Symbol=success_order) =
+   Core.cmpswapfield!(x, f, expected, convert(fieldtype(typeof(x), f), desired), success_order, fail_order)
 
 
 include("coreio.jl")
