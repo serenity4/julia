@@ -70,13 +70,13 @@ jl_sym_t *atom_sym; jl_sym_t *statement_sym; jl_sym_t *all_sym;
 jl_sym_t *compile_sym; jl_sym_t *infer_sym;
 
 jl_sym_t *atomic_sym;
-jl_sym_t *none_sym;
+jl_sym_t *not_atomic_sym;
 jl_sym_t *unordered_sym;
-jl_sym_t *monotonic_sym; // or relaxed_sym?
+jl_sym_t *monotonic_sym;
 jl_sym_t *acquire_sym;
 jl_sym_t *release_sym;
 jl_sym_t *acquire_release_sym;
-jl_sym_t *sequentially_consistent_sym; // or strong_sym?
+jl_sym_t *sequentially_consistent_sym;
 
 
 static uint8_t flisp_system_image[] = {
@@ -421,7 +421,7 @@ void jl_init_common_symbols(void)
     statement_sym = jl_symbol("statement");
     all_sym = jl_symbol("all");
     atomic_sym = jl_symbol("atomic");
-    none_sym = jl_symbol("none");
+    not_atomic_sym = jl_symbol("not_atomic");
     unordered_sym = jl_symbol("unordered");
     monotonic_sym = jl_symbol("monotonic");
     acquire_sym = jl_symbol("acquire");

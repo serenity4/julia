@@ -10,11 +10,9 @@ import Core: print, println, show, write, unsafe_write, stdout, stderr,
 
 const getproperty = Core.getfield
 const setproperty! = Core.setfield!
-const atomic_getproperty = Core.getfield
-const atomic_setproperty! = Core.setfield!
-const atomic_swapproperty! = Core.swapfield!
-const atomic_modifyproperty! = Core.modifyfield!
-const atomic_cmpswapproperty! = Core.cmpswapfield!
+const swapproperty! = Core.swapfield!
+const modifyproperty! = Core.modifyfield!
+const cmpswapproperty! = Core.cmpswapfield!
 
 ccall(:jl_set_istopmod, Cvoid, (Any, Bool), Compiler, false)
 

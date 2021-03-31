@@ -67,7 +67,7 @@ end
 
     @test getfield(r, :x) === x
     @test_throws ConcurrencyViolationError("invalid atomic ordering") getfield(r, :x, :u)
-    @test_throws ConcurrencyViolationError("getfield: atomic field cannot be accessed non-atomically") getfield(r, :x, :none)
+    @test_throws ConcurrencyViolationError("getfield: atomic field cannot be accessed non-atomically") getfield(r, :x, :not_atomic)
     @test getfield(r, :x, :unordered) === x
     @test getfield(r, :x, :monotonic) === x
     @test getfield(r, :x, :acquire) === x
@@ -76,7 +76,7 @@ end
     @test getfield(r, :x, :sequentially_consistent) === x
     @test isdefined(r, :x)
     @test_throws ConcurrencyViolationError("invalid atomic ordering") isdefined(r, :x, :u)
-    @test_throws ConcurrencyViolationError("isdefined: atomic field cannot be accessed non-atomically") isdefined(r, :x, :none)
+    @test_throws ConcurrencyViolationError("isdefined: atomic field cannot be accessed non-atomically") isdefined(r, :x, :not_atomic)
     @test isdefined(r, :x, :unordered)
     @test isdefined(r, :x, :monotonic)
     @test isdefined(r, :x, :acquire)
@@ -86,7 +86,7 @@ end
 
     @test getfield(r, :y) === y
     @test_throws ConcurrencyViolationError("invalid atomic ordering") getfield(r, :y, :u)
-    @test getfield(r, :y, :none) === y
+    @test getfield(r, :y, :not_atomic) === y
     @test_throws ConcurrencyViolationError("getfield: non-atomic field cannot be accessed atomically") getfield(r, :y, :unordered)
     @test_throws ConcurrencyViolationError("getfield: non-atomic field cannot be accessed atomically") getfield(r, :y, :monotonic)
     @test_throws ConcurrencyViolationError("getfield: non-atomic field cannot be accessed atomically") getfield(r, :y, :acquire)
@@ -95,7 +95,7 @@ end
     @test_throws ConcurrencyViolationError("getfield: non-atomic field cannot be accessed atomically") getfield(r, :y, :sequentially_consistent)
     @test isdefined(r, :y)
     @test_throws ConcurrencyViolationError("invalid atomic ordering") isdefined(r, :y, :u)
-    @test isdefined(r, :y, :none)
+    @test isdefined(r, :y, :not_atomic)
     @test_throws ConcurrencyViolationError("isdefined: non-atomic field cannot be accessed atomically") isdefined(r, :y, :unordered)
     @test_throws ConcurrencyViolationError("isdefined: non-atomic field cannot be accessed atomically") isdefined(r, :y, :monotonic)
     @test_throws ConcurrencyViolationError("isdefined: non-atomic field cannot be accessed atomically") isdefined(r, :y, :acquire)
@@ -105,7 +105,7 @@ end
 
     @test_throws ConcurrencyViolationError("invalid atomic ordering") setfield!(r, :x, y, :u)
     @test_throws ConcurrencyViolationError("setfield!: atomic field cannot be written non-atomically") setfield!(r, :x, y)
-    @test_throws ConcurrencyViolationError("setfield!: atomic field cannot be written non-atomically") setfield!(r, :x, y, :none)
+    @test_throws ConcurrencyViolationError("setfield!: atomic field cannot be written non-atomically") setfield!(r, :x, y, :not_atomic)
     @test getfield(r, :x) === x
     @test setfield!(r, :x, y, :unordered) === y
     @test setfield!(r, :x, y, :monotonic) === y
@@ -124,7 +124,7 @@ end
     @test_throws ConcurrencyViolationError("setfield!: non-atomic field cannot be written atomically") setfield!(r, :y, x, :sequentially_consistent)
     @test getfield(r, :y) === y
     @test setfield!(r, :y, x) === x
-    @test setfield!(r, :y, x, :none) === x
+    @test setfield!(r, :y, x, :not_atomic) === x
     @test getfield(r, :y) === x
     nothing
 end

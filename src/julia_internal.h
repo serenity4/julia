@@ -1348,7 +1348,7 @@ extern jl_sym_t *infer_sym;
 extern jl_sym_t *atom_sym; extern jl_sym_t *statement_sym; extern jl_sym_t *all_sym;
 
 extern jl_sym_t *atomic_sym;
-extern jl_sym_t *none_sym;
+extern jl_sym_t *not_atomic_sym;
 extern jl_sym_t *unordered_sym;
 extern jl_sym_t *monotonic_sym; // or relaxed_sym?
 extern jl_sym_t *acquire_sym;

@@ -461,13 +461,13 @@ julia> mutable struct Atomic{T}; @atomic x::T; end
 julia> a = Atomic(1)
 Atomic{Int64}(1)
 
-julia> @atomic a.x = 2 # set field x of a
+julia> @atomic :sequentially_consistent a.x = 2 # set field x of a, with sequential consistency
 2
 
-julia> @atomic a.x # fetch field x or a
+julia> @atomic a.x # fetch field x of a, with sequential consistency
 2
 
-julia> @atomic a.x += 1 # increment field x of a
+julia> @atomic a.x += 1 # increment field x of a, with sequential consistency
 3
 
 julia> y = 4; @atomic a.x, z = y, a.x # swap field x of a with y and put the old value in z
@@ -503,15 +503,15 @@ function make_atomic(@nospecialize(order), @nospecialize(ex))
     order isa QuoteNode || (order = esc(order))
     if ex isa Expr
         if ex.head === :call
-            error("@atomic atomic_modifyproperty! syntax not implemented")
+            error("@atomic modifyproperty! syntax not implemented")
         elseif ex.head === :.
             l, r = esc(ex.args[1]), esc(ex.args[2])
-            return :(atomic_getproperty($l, $r, $order))
+            return :(getproperty($l, $r, $order))
         elseif ex.head === :(=)
             l, r = ex.args[1], ex.args[2]
             if is_expr(l, :., 2)
                 ll, lr = esc(l.args[1]), esc(l.args[2])
-                return :(atomic_setproperty!($ll, $lr, $r, $order))
+                return :(setproperty!($ll, $lr, $r, $order))
             elseif is_expr(l, :tuple) && 1 <= length(l.args) <= 2 && is_expr(r, :tuple, 2)
                 atomic = l.args[1]
                 r.args[2] === :_ || r.args[2] == atomic || error("@atomic swap expressions must match or use the literal _")
@@ -519,10 +519,10 @@ function make_atomic(@nospecialize(order), @nospecialize(ex))
                 atomicl, atomicr = esc(atomic.args[1]), esc(atomic.args[2])
                 old = length(l.args) == 1 ? :_ : esc(l.args[2])
                 new = esc(r.args[1])
-                return :(local new = $new; local old = atomic_swapproperty!($atomicl, $atomicr, new, $order); $old = old; (new, old))
+                return :(local new = $new; local old = swapproperty!($atomicl, $atomicr, new, $order); $old = old; (new, old))
             elseif is_expr(l, :call)
                 length(l.args) == 2 || error("@atomic modify expression has incorrect number of arguments")
-                error("@atomic atomic_modifyproperty! syntax not implemented")
+                error("@atomic modifyproperty! syntax not implemented")
             end
         end
         if length(ex.args) == 2
@@ -540,7 +540,7 @@ function make_atomic(@nospecialize(order), @nospecialize(ex))
                 l, r = ex.args[1], esc(ex.args[2])
                 is_expr(l, :.) || error("@atomic modify expression missing field access")
                 ll, lr, op = esc(l.args[1]), esc(l.args[2]), esc(op)
-                return :(local r = $r; local op = $op; op(atomic_modifyproperty!($ll, $lr, op, r, $order), r))
+                return :(local r = $r; local op = $op; op(modifyproperty!($ll, $lr, op, r, $order), r))
             end
         end
     end

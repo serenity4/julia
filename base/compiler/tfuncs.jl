@@ -683,7 +683,7 @@ function getfield_nothrow(argtypes::Vector{Any})
         boundscheck = Bool
     elseif length(argtypes) == 3
         boundscheck = argtypes[3]
-        if boundscheck === Const(:none) # TODO: this is assuming not atomic
+        if boundscheck === Const(:not_atomic) # TODO: this is assuming not atomic
             boundscheck = Bool
         end
     elseif length(argtypes) == 4
@@ -734,7 +734,7 @@ function getfield_nothrow(@nospecialize(s00), @nospecialize(name), boundscheck::
     elseif isa(s, DataType)
         # Can't say anything about abstract types
         s.abstract && return false
-        s.name.atomicfields == C_NULL || return false # TODO: currently we're only testing for ordering == :none
+        s.name.atomicfields == C_NULL || return false # TODO: currently we're only testing for ordering == :not_atomic
         # If all fields are always initialized, and bounds check is disabled, we can assume
         # we don't throw
         if !boundscheck && !isvatuple(s) && s.name !== NamedTuple.body.body.name && fieldcount(s) == s.ninitialized

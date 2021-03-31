@@ -232,7 +232,7 @@ julia> acc[]
 
 ## [Per-field atomics](@id man-atomics)
 
-We can also use atomics on a more granular level using the [`@atomic`](@ref) macro.
+We can also use atomics on a more granular level using the [`@atomic`](@ref Base.@atomic) macro.
 
 TODO: copy information here from Atomics Manifesto at
 https://docs.google.com/document/d/e/2PACX-1vT7Ibthj9WyM8s5bcQbiKsVK6MtvzqmnPFMy-bcjZLlbqv55a0_sTJ99AkbvPIZk3t7MbhZ57NzaIzC/pub

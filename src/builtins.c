@@ -804,7 +804,7 @@ JL_CALLABLE(jl_f_svec)
 
 enum jl_memory_order jl_get_atomic_order(jl_sym_t *order, char loading, char storing)
 {
-    if (order == none_sym)
+    if (order == not_atomic_sym)
         return jl_memory_order_notatomic;
     if (order == unordered_sym && (loading || storing))
         return jl_memory_order_unordered;

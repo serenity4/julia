@@ -671,7 +671,7 @@ function getfield_elim_pass!(ir::IRCode)
         isa(struct_typ, DataType) || continue
 
         struct_typ.name.atomicfields == C_NULL || continue # TODO: handle more
-        if !(field_ordering === :unspecified || (field_ordering isa Const && field_ordering.val === :none))
+        if !(field_ordering === :unspecified || (field_ordering isa Const && field_ordering.val === :not_atomic))
             continue
         end
 

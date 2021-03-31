@@ -44,20 +44,22 @@ setproperty!(x, f::Symbol, v) = setfield!(x, f, convert(fieldtype(typeof(x), f),
 
 dotgetproperty(x, f) = getproperty(x, f)
 
-atomic_getproperty(x::Module, f::Symbol, order::Symbol) = (@_inline_meta; getfield(x, f, order))
-atomic_setproperty!(x::Module, f::Symbol, v, order::Symbol) = setfield!(x, f, v, order) # to get a decent error
-atomic_getproperty(x::Type, f::Symbol, order::Symbol) = (@_inline_meta; getfield(x, f, order))
-atomic_setproperty!(x::Type, f::Symbol, v, order::Symbol) = error("setfield! fields of Types should not be changed")
-atomic_getproperty(x::Tuple, f::Int, order::Symbol) = (@_inline_meta; getfield(x, f, order))
-atomic_setproperty!(x::Tuple, f::Int, v, order::Symbol) = setfield!(x, f, v, order) # to get a decent error
+getproperty(x::Module, f::Symbol, order::Symbol) = (@_inline_meta; getfield(x, f, order))
+setproperty!(x::Module, f::Symbol, v, order::Symbol) = setfield!(x, f, v, order) # to get a decent error
+getproperty(x::Type, f::Symbol, order::Symbol) = (@_inline_meta; getfield(x, f, order))
+setproperty!(x::Type, f::Symbol, v, order::Symbol) = error("setfield! fields of Types should not be changed")
+getproperty(x::Tuple, f::Int, order::Symbol) = (@_inline_meta; getfield(x, f, order))
+setproperty!(x::Tuple, f::Int, v, order::Symbol) = setfield!(x, f, v, order) # to get a decent error
 
-atomic_getproperty(x, f::Symbol, order::Symbol) = (@_inline_meta; getfield(x, f, order))
-atomic_setproperty!(x, f::Symbol, v, order::Symbol) = (@_inline_meta; setfield!(x, f, convert(fieldtype(typeof(x), f), v), order))
+getproperty(x, f::Symbol, order::Symbol) = (@_inline_meta; getfield(x, f, order))
+setproperty!(x, f::Symbol, v, order::Symbol) = (@_inline_meta; setfield!(x, f, convert(fieldtype(typeof(x), f), v), order))
 
-atomic_swapproperty!(x, f::Symbol, v, order::Symbol) = Core.swapfield!(x, f, convert(fieldtype(typeof(x), f), v), order)
-atomic_modifyproperty!(x, f::Symbol, op, v, order::Symbol) = Core.modifyfield!(x, f, op, v, order)
-atomic_cmpswapproperty!(x, f::Symbol, expected, desired, success_order::Symbol, fail_order::Symbol=success_order) =
-   Core.cmpswapfield!(x, f, expected, convert(fieldtype(typeof(x), f), desired), success_order, fail_order)
+swapproperty!(x, f::Symbol, v, order::Symbol=:notatomic) =
+    Core.swapfield!(x, f, convert(fieldtype(typeof(x), f), v), order)
+modifyproperty!(x, f::Symbol, op, v, order::Symbol=:notatomic) =
+    Core.modifyfield!(x, f, op, v, order)
+cmpswapproperty!(x, f::Symbol, expected, desired, success_order::Symbol=:notatomic, fail_order::Symbol=success_order) =
+    Core.cmpswapfield!(x, f, expected, convert(fieldtype(typeof(x), f), desired), success_order, fail_order)
 
 
 include("coreio.jl")

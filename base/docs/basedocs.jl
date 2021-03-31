@@ -1921,7 +1921,7 @@ Extract a field from a composite `value` by name or position. Optionally, an
 ordering can be defined for the operation. If the field was declared `@atomic`,
 the specification is strongly recommended to be compatible with the stores to
 that location. Otherwise, if not declared as `@atomic`, this parameter must be
-`:none` if specified.
+`:not_atomic` if specified.
 See also [`getproperty`](@ref Base.getproperty) and [`fieldnames`](@ref).
 
 # Examples
@@ -1949,7 +1949,7 @@ Assign `x` to a named field in `value` of composite type. The `value` must be
 mutable and `x` must be a subtype of `fieldtype(typeof(value), name)`.
 Additionally, an ordering can be specified for this operation. If the field was
 declared `@atomic`, this specification is mandatory. Otherwise, if not declared
-as `@atomic`, it must be `:none` if specified.
+as `@atomic`, it must be `:not_atomic` if specified.
 See also [`setproperty!`](@ref Base.setproperty!).
 
 # Examples
@@ -2055,7 +2055,7 @@ be a module and a symbol or a composite object and field name (as a symbol) or
 index. Optionally, an ordering can be defined for the operation. If the field
 was declared `@atomic`, the specification is strongly recommended to be
 compatible with the stores to that location. Otherwise, if not declared as
-`@atomic`, this parameter must be `:none` if specified.
+`@atomic`, this parameter must be `:not_atomic` if specified.
 
 To test whether an array element is defined, use [`isassigned`](@ref) instead.
 
@@ -2669,7 +2669,8 @@ julia> obj.x
 1
 ```
 
-See also [`propertynames`](@ref Base.propertynames) and
+See also [`getfield`](@ref Core.getfield),
+[`propertynames`](@ref Base.propertynames) and
 [`setproperty!`](@ref Base.setproperty!).
 """
 Base.getproperty
@@ -2679,64 +2680,61 @@ Base.getproperty
 
 The syntax `a.b = c` calls `setproperty!(a, :b, c)`.
 
-See also [`propertynames`](@ref Base.propertynames) and
+See also [`setfield!`](@ref Core.setfield!),
+[`propertynames`](@ref Base.propertynames) and
 [`getproperty`](@ref Base.getproperty).
 """
 Base.setproperty!
 
 """
-    atomic_getproperty(value, name::Symbol, order::Symbol)
+    getproperty(value, name::Symbol, order::Symbol)
 
-The syntax `@atomic order a.b` calls `atomic_getproperty(a, :b, :order)` and
-the syntax `@atomic a.b` calls `atomic_getproperty(a, :b, :sequentially_consistent)`.
-
-See also [`getfield`](@ref Core.getfield)
-and [`getproperty`](@ref Base.getproperty).
+The syntax `@atomic order a.b` calls `getproperty(a, :b, :order)` and
+the syntax `@atomic a.b` calls `getproperty(a, :b, :sequentially_consistent)`.
 """
-Base.atomic_getproperty
+Base.getproperty
 
 """
-    atomic_setproperty!(value, name::Symbol, x, order::Symbol)
+    setproperty!(value, name::Symbol, x, order::Symbol)
 
-The syntax `@atomic order a.b = c` calls `atomic_setproperty!(a, :b, c, :order)`
-and the syntax `@atomic a.b = c` calls `atomic_getproperty(a, :b, :sequentially_consistent)`.
+The syntax `@atomic order a.b = c` calls `setproperty!(a, :b, c, :order)`
+and the syntax `@atomic a.b = c` calls `getproperty(a, :b, :sequentially_consistent)`.
+"""
+Base.setproperty!
 
-See also [`setfield!`](@ref Core.setfield!)
+"""
+    swapproperty!(x, f::Symbol, v, order::Symbol=:notatomic)
+
+The syntax `@atomic a.b, _ = c, a.b` returns `(c, swapproperty!(a, :b, c, :sequentially_consistent))`,
+where there must be one getfield expression common to both sides.
+
+See also [`swapfield!`](@ref Core.swapfield!)
 and [`setproperty!`](@ref Base.setproperty!).
 """
-Base.atomic_setproperty!
+Base.swapproperty!
 
-#"""
-#    atomic_swapproperty!(x, f::Symbol, v, order::Symbol)
-#
-#The syntax `@atomic a.b, _ = c, a.b` returns `(c, atomic_swapproperty!(a, :b, c, :sequentially_consistent))`,
-#where there must be one getfield expression common to both sides.
-#
-#See also [`swapfield!`](@ref Core.swapfield!)
-#and [`setproperty!`](@ref Base.setproperty!).
-#"""
-#Base.atomic_swapproperty!
-#
-#"""
-#    atomic_modifyproperty!(x, f::Symbol, op, v, order::Symbol)
-#
-#The syntax `@atomic max!(a.b, c)` returns `atomic_modifyproperty!(a, :b, max, c, :sequentially_consistent))`,
-#where the first argument must be a getfield expression and is modified atomically.
-#
-#See also [`modifyfield!`](@ref Core.modifyfield!)
-#and [`setproperty!`](@ref Base.setproperty!).
-#"""
-#Base.atomic_modifyproperty!
-#
-#"""
-#    atomic_cmpswapproperty!(x, f::Symbol, cmp, expected, desired, success_order::Symbol, fail_order::Symbol=success_order)
-#
-#Perform a compare-and-swap operation on x.f (there is no convenient `@atomic` syntax for this).
-#
-#See also [`cmpswapfield!`](@ref Core.cmpswapfield!)
-#and [`setproperty!`](@ref Base.setproperty!).
-#"""
-#Base.atomic_cmpswapproperty!
+"""
+    modifyproperty!(x, f::Symbol, op, v, order::Symbol=:notatomic)
+
+The syntax `@atomic a().b = max(a().b, c)` returns `modifyproperty!(a(), :b,
+max, c, :sequentially_consistent))`, where the first argument must be a
+`getfield`/`setfield!` expression and is modified atomically.
+
+See also [`modifyfield!`](@ref Core.modifyfield!)
+and [`setproperty!`](@ref Base.setproperty!).
+"""
+Base.modifyproperty!
+
+"""
+    cmpswapproperty!(x, f::Symbol, expected, desired, success_order::Symbol=:notatomic, fail_order::Symbol=success_order)
+
+Perform a compare-and-swap operation on `x.f` from `expected` to `desired`, per
+egal (there is no convenient `@atomic` syntax for this).
+
+See also [`cmpswapfield!`](@ref Core.cmpswapfield!)
+and [`setproperty!`](@ref Base.setproperty!).
+"""
+Base.cmpswapproperty!
 
 
 """
