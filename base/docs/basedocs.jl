@@ -2003,25 +2003,25 @@ optimized to the appropriate hardware instruction, otherwise it'll use a loop.
 """
 modifyfield!
 
-#"""
-#    Core.cmpswapfield!(value, name::Symbol, cmp, expected, desired,
-#        [success_order::Symbol, [fail_order::Symbol=success_order]) =>
-#        (old, Bool)
-#
-#These atomically perform the operations to get and conditionally set a field to
-#a given value.
-#
-#    y = getfield!(value, name, fail_order)
-#    ok = cmp(y, expected)
-#    if ok
-#        setfield!(value, name, desired, success_order)
-#    end
-#    return y, ok
-#
-#If the operation is `===` on a supported type, we'll use the relevant processor
-#instructions, otherwise it'll use a loop.
-#"""
-#Core.cmpswapfield!
+"""
+    cmpswapfield!(value, name::Symbol, cmp, expected, desired,
+        [success_order::Symbol, [fail_order::Symbol=success_order]) =>
+        (old, Bool)
+
+These atomically perform the operations to get and conditionally set a field to
+a given value.
+
+    y = getfield!(value, name, fail_order)
+    ok = cmp(y, expected)
+    if ok
+        setfield!(value, name, desired, success_order)
+    end
+    return y, ok
+
+If the operation is `===` on a supported type, we'll use the relevant processor
+instructions, otherwise it'll use a loop.
+"""
+cmpswapfield!
 
 """
     typeof(x)
@@ -2643,8 +2643,11 @@ typeassert
 
 """
     getproperty(value, name::Symbol)
+    getproperty(value, name::Symbol, order::Symbol)
 
 The syntax `a.b` calls `getproperty(a, :b)`.
+The syntax `@atomic order a.b` calls `getproperty(a, :b, :order)` and
+the syntax `@atomic a.b` calls `getproperty(a, :b, :sequentially_consistent)`.
 
 # Examples
 ```jldoctest
@@ -2677,28 +2680,15 @@ Base.getproperty
 
 """
     setproperty!(value, name::Symbol, x)
+    setproperty!(value, name::Symbol, x, order::Symbol)
 
 The syntax `a.b = c` calls `setproperty!(a, :b, c)`.
+The syntax `@atomic order a.b = c` calls `setproperty!(a, :b, c, :order)`
+and the syntax `@atomic a.b = c` calls `getproperty(a, :b, :sequentially_consistent)`.
 
 See also [`setfield!`](@ref Core.setfield!),
 [`propertynames`](@ref Base.propertynames) and
 [`getproperty`](@ref Base.getproperty).
-"""
-Base.setproperty!
-
-"""
-    getproperty(value, name::Symbol, order::Symbol)
-
-The syntax `@atomic order a.b` calls `getproperty(a, :b, :order)` and
-the syntax `@atomic a.b` calls `getproperty(a, :b, :sequentially_consistent)`.
-"""
-Base.getproperty
-
-"""
-    setproperty!(value, name::Symbol, x, order::Symbol)
-
-The syntax `@atomic order a.b = c` calls `setproperty!(a, :b, c, :order)`
-and the syntax `@atomic a.b = c` calls `getproperty(a, :b, :sequentially_consistent)`.
 """
 Base.setproperty!
 
