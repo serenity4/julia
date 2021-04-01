@@ -744,6 +744,13 @@ JL_DLLEXPORT jl_datatype_t * jl_new_foreign_type(jl_sym_t *name,
 
 // bits constructors ----------------------------------------------------------
 
+#if MAX_ATOMIC_SIZE > MAX_POINTERATOMIC_SIZE
+#error MAX_ATOMIC_SIZE too large
+#endif
+#if MAX_POINTERATOMIC_SIZE > 8
+typedef __uint128_t uint128_t;
+#endif
+
 JL_DLLEXPORT jl_value_t *jl_new_bits(jl_value_t *dt, const void *data)
 {
     // data may not have the alignment required by the size
@@ -778,6 +785,230 @@ JL_DLLEXPORT jl_value_t *jl_new_bits(jl_value_t *dt, const void *data)
     }
     return v;
 }
+
+JL_DLLEXPORT jl_value_t *jl_atomic_new_bits(jl_value_t *dt, const char *data)
+{
+    // data must have the required alignment for an atomic of the given size
+    jl_ptls_t ptls = jl_get_ptls_states();
+    assert(jl_is_datatype(dt));
+    jl_datatype_t *bt = (jl_datatype_t*)dt;
+    size_t nb = jl_datatype_size(bt);
+    // some types have special pools to minimize allocations
+    if (nb == 0)               return jl_new_struct_uninit(bt); // returns bt->instance
+    if (bt == jl_bool_type)    return (1 & jl_atomic_load((int8_t*)data)) ? jl_true : jl_false;
+    if (bt == jl_uint8_type)   return jl_box_uint8(jl_atomic_load((uint8_t*)data));
+    if (bt == jl_int64_type)   return jl_box_int64(jl_atomic_load((int64_t*)data));
+    if (bt == jl_int32_type)   return jl_box_int32(jl_atomic_load((int32_t*)data));
+    if (bt == jl_int8_type)    return jl_box_int8(jl_atomic_load((int8_t*)data));
+    if (bt == jl_int16_type)   return jl_box_int16(jl_atomic_load((int16_t*)data));
+    if (bt == jl_uint64_type)  return jl_box_uint64(jl_atomic_load((uint64_t*)data));
+    if (bt == jl_uint32_type)  return jl_box_uint32(jl_atomic_load((uint32_t*)data));
+    if (bt == jl_uint16_type)  return jl_box_uint16(jl_atomic_load((uint16_t*)data));
+    if (bt == jl_char_type)    return jl_box_char(jl_atomic_load((uint32_t*)data));
+
+    jl_value_t *v = jl_gc_alloc(ptls, nb, bt);
+    switch (nb) {
+    case  1: *(uint8_t*) v = jl_atomic_load((uint8_t*)data);    break;
+    case  2: *(uint16_t*)v = jl_atomic_load((uint16_t*)data);   break;
+    case  4: *(uint32_t*)v = jl_atomic_load((uint32_t*)data);   break;
+#if MAX_POINTERATOMIC_SIZE > 4
+    case  8: *(uint64_t*)v = jl_atomic_load((uint64_t*)data);   break;
+#endif
+#if MAX_POINTERATOMIC_SIZE > 8
+    case 16: *(uint128_t*)v = jl_atomic_load((uint128_t*)data);        break;
+#else
+#error MAX_POINTERATOMIC_SIZE too large
+#endif
+    default:
+        abort();
+    }
+    return v;
+}
+
+JL_DLLEXPORT void jl_atomic_store_bits(char *dst, const jl_value_t *src, int nb)
+{
+    // dst must have the required alignment for an atomic of the given size
+    // src must be aligned by the GC
+    switch (nb) {
+    case  0:                                                   break;
+    case  1: jl_atomic_store((uint8_t*)dst, *(uint8_t*)src);   break;
+    case  2: jl_atomic_store((uint16_t*)dst, *(uint16_t*)src); break;
+    case  4: jl_atomic_store((uint32_t*)dst, *(uint32_t*)src); break;
+#if MAX_POINTERATOMIC_SIZE > 4
+    case  8: jl_atomic_store((uint64_t*)dst, *(uint64_t*)src); break;
+#endif
+#if MAX_POINTERATOMIC_SIZE > 8
+    case 16: jl_atomic_store((uint128_t*)dst, *(uint128_t*)src); break;
+#else
+#error MAX_POINTERATOMIC_SIZE too large
+#endif
+    default:
+        abort();
+    }
+}
+
+JL_DLLEXPORT jl_value_t *jl_atomic_swap_bits(jl_value_t *dt, char *dst, const jl_value_t *src, int nb)
+{
+    // dst must have the required alignment for an atomic of the given size
+    jl_ptls_t ptls = jl_get_ptls_states();
+    assert(jl_is_datatype(dt));
+    jl_datatype_t *bt = (jl_datatype_t*)dt;
+    // some types have special pools to minimize allocations
+    if (nb == 0)               return jl_new_struct_uninit(bt); // returns bt->instance
+    if (bt == jl_bool_type)    return (1 & jl_atomic_exchange((int8_t*)dst, 1 & *(int8_t*)src)) ? jl_true : jl_false;
+    if (bt == jl_uint8_type)   return jl_box_uint8(jl_atomic_exchange((uint8_t*)dst, *(int8_t*)src));
+    if (bt == jl_int64_type)   return jl_box_int64(jl_atomic_exchange((int64_t*)dst, *(int64_t*)src));
+    if (bt == jl_int32_type)   return jl_box_int32(jl_atomic_exchange((int32_t*)dst, *(int32_t*)src));
+    if (bt == jl_int8_type)    return jl_box_int8(jl_atomic_exchange((int8_t*)dst, *(int8_t*)src));
+    if (bt == jl_int16_type)   return jl_box_int16(jl_atomic_exchange((int16_t*)dst, *(int16_t*)src));
+    if (bt == jl_uint64_type)  return jl_box_uint64(jl_atomic_exchange((uint64_t*)dst, *(uint64_t*)src));
+    if (bt == jl_uint32_type)  return jl_box_uint32(jl_atomic_exchange((uint32_t*)dst, *(uint32_t*)src));
+    if (bt == jl_uint16_type)  return jl_box_uint16(jl_atomic_exchange((uint16_t*)dst, *(uint16_t*)src));
+    if (bt == jl_char_type)    return jl_box_char(jl_atomic_exchange((uint32_t*)dst, *(uint32_t*)src));
+
+    jl_value_t *v = jl_gc_alloc(ptls, jl_datatype_size(bt), bt);
+    switch (nb) {
+    case  1: *(uint8_t*) v = jl_atomic_exchange((uint8_t*)dst, *(uint8_t*)src);    break;
+    case  2: *(uint16_t*)v = jl_atomic_exchange((uint16_t*)dst, *(uint16_t*)src);   break;
+    case  4: *(uint32_t*)v = jl_atomic_exchange((uint32_t*)dst, *(uint32_t*)src);   break;
+#if MAX_POINTERATOMIC_SIZE > 4
+    case  8: *(uint64_t*)v = jl_atomic_exchange((uint64_t*)dst, *(uint64_t*)src);   break;
+#endif
+#if MAX_POINTERATOMIC_SIZE > 8
+    case 16: *(uint128_t*)v = jl_atomic_exchange((uint128_t*)dst, *(uint128_t*)src);   break;
+#else
+#error MAX_POINTERATOMIC_SIZE too large
+#endif
+    default:
+        abort();
+    }
+    return v;
+}
+
+JL_DLLEXPORT int jl_atomic_bool_cmpswap_bits(char *dst, const jl_value_t *expected, const jl_value_t *src, int nb)
+{
+    // dst must have the required alignment for an atomic of the given size
+    // n.b.: this can spuriously fail if there are padding bits, the caller should deal with that
+    int success;
+    switch (nb) {
+    case  1: {
+        uint8_t y = *(uint8_t*)expected;
+        success = jl_atomic_cmpswap((uint8_t*)dst, &y, *(uint8_t*)src);
+        break;
+    }
+    case  2: {
+        uint16_t y = *(uint16_t*)expected;
+        success = jl_atomic_cmpswap((uint16_t*)dst, &y, *(uint16_t*)src);
+        break;
+    }
+    case  4: {
+        uint32_t y = *(uint32_t*)expected;
+        success = jl_atomic_cmpswap((uint32_t*)dst, &y, *(uint32_t*)src);
+        break;
+    }
+#if MAX_POINTERATOMIC_SIZE > 4
+    case  8: {
+        uint64_t y = *(uint64_t*)expected;
+        success = jl_atomic_cmpswap((uint64_t*)dst, &y, *(uint64_t*)src);
+        break;
+    }
+#endif
+#if MAX_POINTERATOMIC_SIZE > 8
+    case 16: {
+        uint128_t y = *(uint128_t*)expected;
+        success = jl_atomic_cmpswap((uint128_t*)dst, &y, *(uint128_t*)src);
+        break;
+    }
+#else
+#error MAX_POINTERATOMIC_SIZE too large
+#endif
+    default:
+        abort();
+    }
+    return success;
+}
+
+JL_DLLEXPORT jl_value_t *jl_atomic_cmpswap_bits(jl_datatype_t *dt, char *dst, const jl_value_t *expected, const jl_value_t *src, int nb)
+{
+    // dst must have the required alignment for an atomic of the given size
+    // n.b.: this does not spuriously fail if there are padding bits
+    jl_value_t *params[2];
+    params[0] = (jl_value_t*)dt;
+    params[1] = (jl_value_t*)jl_bool_type;
+    jl_datatype_t *tuptyp = jl_apply_tuple_type_v(params, 2);
+    JL_GC_PROMISE_ROOTED(tuptyp); // (JL_ALWAYS_LEAFTYPE)
+    int isptr = jl_field_isptr(tuptyp, 0);
+    jl_ptls_t ptls = jl_get_ptls_states();
+    jl_value_t *y = jl_gc_alloc(ptls, isptr ? nb : tuptyp->size, isptr ? dt : tuptyp);
+    int success;
+    switch (nb) {
+    case  1: {
+        uint8_t *y8 = (uint8_t*)y;
+        *y8 = *(uint8_t*)expected;
+        success = jl_atomic_cmpswap((uint8_t*)dst, y8, *(uint8_t*)src);
+        break;
+    }
+    case  2: {
+        uint16_t *y16 = (uint16_t*)y;
+        *y16 = *(uint16_t*)expected;
+        while (1) {
+            success = jl_atomic_cmpswap((uint16_t*)dst, y16, *(uint16_t*)src);
+            if (success || !dt->layout->haspadding || !jl_egal__bits(y, expected, dt))
+                break;
+        }
+        break;
+    }
+    case  4: {
+        uint32_t *y32 = (uint32_t*)y;
+        *y32 = *(uint32_t*)expected;
+        while (1) {
+            success = jl_atomic_cmpswap((uint32_t*)dst, y32, *(uint32_t*)src);
+            if (success || !dt->layout->haspadding || !jl_egal__bits(y, expected, dt))
+                break;
+        }
+        break;
+    }
+#if MAX_POINTERATOMIC_SIZE > 4
+    case  8: {
+        uint64_t *y64 = (uint64_t*)y;
+        *y64 = *(uint64_t*)expected;
+        while (1) {
+            success = jl_atomic_cmpswap((uint64_t*)dst, y64, *(uint64_t*)src);
+            if (success || !dt->layout->haspadding || !jl_egal__bits(y, expected, dt))
+                break;
+        }
+        break;
+    }
+#endif
+#if MAX_POINTERATOMIC_SIZE > 8
+    case 16: {
+        uint128_t *y128 = (uint128_t*)y;
+        *y128 = *(uint128_t*)expected;
+        while (1) {
+            success = jl_atomic_cmpswap((uint128_t*)dst, y128, *(uint128_t*)src);
+            if (success || !dt->layout->haspadding || !jl_egal__bits(y, expected, dt))
+                break;
+        }
+        break;
+    }
+#else
+#error MAX_POINTERATOMIC_SIZE too large
+#endif
+    default:
+        abort();
+    }
+    if (isptr) {
+        JL_GC_PUSH1(&y);
+        jl_value_t *z = jl_gc_alloc(ptls, tuptyp->size, tuptyp);
+        *(jl_value_t**)z = y;
+        JL_GC_POP();
+        y = z;
+        nb = sizeof(jl_value_t*);
+    }
+    *((uint8_t*)y + nb) = success ? 1 : 0;
+    return y;
+}
+
 
 
 // used by boot.jl
@@ -1296,7 +1527,6 @@ jl_value_t *modify_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_valu
     JL_GC_PUSHARGS(args, 2);
     args[0] = r;
     while (1) {
-        // TODO: atomic ordering fence required here if hasptr?
         args[1] = rhs;
         jl_value_t *y = jl_apply_generic(op, args, 2);
         args[1] = y;

@@ -42,8 +42,10 @@
 // (assumed to be at least a pointer size)
 #ifdef _P64
 #define MAX_ATOMIC_SIZE 16
+#define MAX_POINTERATOMIC_SIZE 16
 #else
 #define MAX_ATOMIC_SIZE 8
+#define MAX_POINTERATOMIC_SIZE 8
 #endif
 
 #ifdef _P64
