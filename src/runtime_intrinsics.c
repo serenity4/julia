@@ -144,6 +144,8 @@ JL_DLLEXPORT jl_value_t *jl_atomic_pointerswap(jl_value_t *p, jl_value_t *x, jl_
 
 JL_DLLEXPORT jl_value_t *jl_atomic_pointermodify(jl_value_t *p, jl_value_t *f, jl_value_t *x, jl_value_t *order_sym)
 {
+    // n.b. we use seq_cst always here, but need to verify the order sym
+    // against the weaker load-only that happens first
     if (order_sym == (jl_value_t*)acquire_release_sym)
         order_sym = (jl_value_t*)acquire_sym;
     jl_value_t *expected = jl_atomic_pointerref(p, order_sym);

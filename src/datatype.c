@@ -1523,6 +1523,8 @@ jl_value_t *modify_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_valu
     size_t offs = jl_field_offset(st, i);
     jl_value_t *ty = jl_field_type_concrete(st, i);
     jl_value_t *r = jl_get_nth_field_checked(v, i);
+    if (isatomic && jl_field_isptr(st, i))
+        jl_fence(); // load was previously only relaxed
     jl_value_t **args;
     JL_GC_PUSHARGS(args, 2);
     args[0] = r;
@@ -1532,8 +1534,6 @@ jl_value_t *modify_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_valu
         args[1] = y;
         if (!jl_isa(y, ty))
             jl_type_error("modifyfield!", ty, y);
-        // TODO: if (order >= jl_memory_order_acq_rel || order == jl_memory_order_release)
-        // TODO:     jl_fence(); // `st->[idx]` will have at least relaxed ordering
         if (jl_field_isptr(st, i)) {
             jl_value_t **p = (jl_value_t**)((char*)v + offs);
             if (isatomic ? jl_atomic_cmpswap(p, &r, y) : jl_atomic_cmpswap_relaxed(p, &r, y))
@@ -1597,8 +1597,6 @@ jl_value_t *modify_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_valu
         jl_gc_safepoint();
     }
     JL_GC_POP();
-    //if (order >= jl_memory_order_acq_rel || order == jl_memory_order_acquire)
-    //    jl_fence(); // `v` already had at least consume ordering
     return r;
 }
 
@@ -1609,8 +1607,6 @@ jl_value_t *cmpswap_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_val
         jl_type_error("cmpswapfield!", ty, rhs);
     size_t offs = jl_field_offset(st, i);
     jl_value_t *r = expected;
-    // TODO: if (order >= jl_memory_order_acq_rel || order == jl_memory_order_release)
-    // TODO:     jl_fence(); // `st->[idx]` will have at least relaxed ordering
     if (jl_field_isptr(st, i)) {
         jl_value_t **p = (jl_value_t**)((char*)v + offs);
         int success;
@@ -1620,7 +1616,7 @@ jl_value_t *cmpswap_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_val
                 jl_gc_wb(v, rhs);
             if (__unlikely(r == NULL))
                 jl_throw(jl_undefref_exception);
-            if (success || !jl_egal(r, expected)) // TODO: may need barrier before jl_egal
+            if (success || !jl_egal(r, expected))
                 break;
         }
         jl_value_t **args;
@@ -1704,8 +1700,6 @@ jl_value_t *cmpswap_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_val
         if (__unlikely(r == NULL))
             jl_throw(jl_undefref_exception);
     }
-    //if (order >= jl_memory_order_acq_rel || order == jl_memory_order_acquire)
-    //    jl_fence(); // `v` already had at least consume ordering
     return r;
 }
 

@@ -925,11 +925,7 @@ JL_CALLABLE(jl_f_swapfield)
     if (isatomic == (order == jl_memory_order_notatomic))
         jl_atomic_error(isatomic ? "swapfield!: atomic field cannot be written non-atomically"
                                  : "swapfield!: non-atomic field cannot be written atomically");
-    if (order >= jl_memory_order_acq_rel || order == jl_memory_order_release)
-        jl_fence(); // `st->[idx]` will have at least relaxed ordering
-    v = swap_nth_field(st, v, idx, args[2], isatomic);
-    if (order >= jl_memory_order_acq_rel || order == jl_memory_order_acquire)
-        jl_fence(); // `v` already had at least consume ordering
+    v = swap_nth_field(st, v, idx, args[2], isatomic); // always seq_cst, if isatomic needed at all
     return v;
 }
 
@@ -948,7 +944,7 @@ JL_CALLABLE(jl_f_modifyfield)
     if (isatomic == (order == jl_memory_order_notatomic))
         jl_atomic_error(isatomic ? "modifyfield!: atomic field cannot be written non-atomically"
                                  : "modifyfield!: non-atomic field cannot be written atomically");
-    v = modify_nth_field(st, v, idx, args[2], args[3], isatomic);
+    v = modify_nth_field(st, v, idx, args[2], args[3], isatomic); // always seq_cst, if isatomic needed at all
     return v;
 }
 
@@ -965,7 +961,7 @@ JL_CALLABLE(jl_f_cmpswapfield)
         JL_TYPECHK(cmpswapfield!, symbol, args[5]);
         failure_order = jl_get_atomic_order_checked((jl_sym_t*)args[5], 1, 0);
     }
-    // TODO: filter invalid orderings
+    // TODO: filter more invalid ordering combinations
     jl_value_t *v = args[0];
     jl_datatype_t *st = (jl_datatype_t*)jl_typeof(v);
     size_t idx = get_checked_fieldindex("cmpswapfield!", st, v, args[1], 1);
@@ -975,7 +971,7 @@ JL_CALLABLE(jl_f_cmpswapfield)
                                  : "cmpswapfield!: non-atomic field cannot be written atomically");
     if (failure_order > success_order)
         jl_atomic_error("cmpswapfield!: invalid atomic ordering");
-    v = cmpswap_nth_field(st, v, idx, args[2], args[3], isatomic);
+    v = cmpswap_nth_field(st, v, idx, args[2], args[3], isatomic); // always seq_cst, if isatomic needed at all
     return v;
 }
 
