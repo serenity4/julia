@@ -37,16 +37,12 @@
 #  define MAX_ALIGN 8
 #endif
 
-// define the largest size (bytes) of a properly aligned object that the
-// processor family typically supports without a lock
-// (assumed to be at least a pointer size)
-#ifdef _P64
-#define MAX_ATOMIC_SIZE 16
-#define MAX_POINTERATOMIC_SIZE 16
-#else
+// Define the largest size (bytes) of a properly aligned object that the
+// processor family and compiler typically supports without a lock
+// (assumed to be at least a pointer size). Since C is bad at handling 16-byte
+// types, we currently use 8 here as the default.
 #define MAX_ATOMIC_SIZE 8
 #define MAX_POINTERATOMIC_SIZE 8
-#endif
 
 #ifdef _P64
 #define NWORDS(sz) (((sz)+7)>>3)

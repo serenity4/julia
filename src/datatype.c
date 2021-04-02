@@ -747,7 +747,10 @@ JL_DLLEXPORT jl_datatype_t * jl_new_foreign_type(jl_sym_t *name,
 #if MAX_ATOMIC_SIZE > MAX_POINTERATOMIC_SIZE
 #error MAX_ATOMIC_SIZE too large
 #endif
-#if MAX_POINTERATOMIC_SIZE > 8
+#if MAX_POINTERATOMIC_SIZE > 16
+#error MAX_POINTERATOMIC_SIZE too large
+#endif
+#if MAX_POINTERATOMIC_SIZE >= 16
 typedef __uint128_t uint128_t;
 #endif
 
@@ -811,13 +814,11 @@ JL_DLLEXPORT jl_value_t *jl_atomic_new_bits(jl_value_t *dt, const char *data)
     case  1: *(uint8_t*) v = jl_atomic_load((uint8_t*)data);    break;
     case  2: *(uint16_t*)v = jl_atomic_load((uint16_t*)data);   break;
     case  4: *(uint32_t*)v = jl_atomic_load((uint32_t*)data);   break;
-#if MAX_POINTERATOMIC_SIZE > 4
+#if MAX_POINTERATOMIC_SIZE >= 8
     case  8: *(uint64_t*)v = jl_atomic_load((uint64_t*)data);   break;
 #endif
-#if MAX_POINTERATOMIC_SIZE > 8
+#if MAX_POINTERATOMIC_SIZE >= 16
     case 16: *(uint128_t*)v = jl_atomic_load((uint128_t*)data);        break;
-#else
-#error MAX_POINTERATOMIC_SIZE too large
 #endif
     default:
         abort();
@@ -834,13 +835,11 @@ JL_DLLEXPORT void jl_atomic_store_bits(char *dst, const jl_value_t *src, int nb)
     case  1: jl_atomic_store((uint8_t*)dst, *(uint8_t*)src);   break;
     case  2: jl_atomic_store((uint16_t*)dst, *(uint16_t*)src); break;
     case  4: jl_atomic_store((uint32_t*)dst, *(uint32_t*)src); break;
-#if MAX_POINTERATOMIC_SIZE > 4
+#if MAX_POINTERATOMIC_SIZE >= 8
     case  8: jl_atomic_store((uint64_t*)dst, *(uint64_t*)src); break;
 #endif
-#if MAX_POINTERATOMIC_SIZE > 8
+#if MAX_POINTERATOMIC_SIZE >= 16
     case 16: jl_atomic_store((uint128_t*)dst, *(uint128_t*)src); break;
-#else
-#error MAX_POINTERATOMIC_SIZE too large
 #endif
     default:
         abort();
@@ -871,13 +870,11 @@ JL_DLLEXPORT jl_value_t *jl_atomic_swap_bits(jl_value_t *dt, char *dst, const jl
     case  1: *(uint8_t*) v = jl_atomic_exchange((uint8_t*)dst, *(uint8_t*)src);    break;
     case  2: *(uint16_t*)v = jl_atomic_exchange((uint16_t*)dst, *(uint16_t*)src);   break;
     case  4: *(uint32_t*)v = jl_atomic_exchange((uint32_t*)dst, *(uint32_t*)src);   break;
-#if MAX_POINTERATOMIC_SIZE > 4
+#if MAX_POINTERATOMIC_SIZE >= 8
     case  8: *(uint64_t*)v = jl_atomic_exchange((uint64_t*)dst, *(uint64_t*)src);   break;
 #endif
-#if MAX_POINTERATOMIC_SIZE > 8
+#if MAX_POINTERATOMIC_SIZE >= 16
     case 16: *(uint128_t*)v = jl_atomic_exchange((uint128_t*)dst, *(uint128_t*)src);   break;
-#else
-#error MAX_POINTERATOMIC_SIZE too large
 #endif
     default:
         abort();
@@ -891,6 +888,10 @@ JL_DLLEXPORT int jl_atomic_bool_cmpswap_bits(char *dst, const jl_value_t *expect
     // n.b.: this can spuriously fail if there are padding bits, the caller should deal with that
     int success;
     switch (nb) {
+    case  0: {
+        success = 1;
+        break;
+    }
     case  1: {
         uint8_t y = *(uint8_t*)expected;
         success = jl_atomic_cmpswap((uint8_t*)dst, &y, *(uint8_t*)src);
@@ -906,21 +907,19 @@ JL_DLLEXPORT int jl_atomic_bool_cmpswap_bits(char *dst, const jl_value_t *expect
         success = jl_atomic_cmpswap((uint32_t*)dst, &y, *(uint32_t*)src);
         break;
     }
-#if MAX_POINTERATOMIC_SIZE > 4
+#if MAX_POINTERATOMIC_SIZE >= 8
     case  8: {
         uint64_t y = *(uint64_t*)expected;
         success = jl_atomic_cmpswap((uint64_t*)dst, &y, *(uint64_t*)src);
         break;
     }
 #endif
-#if MAX_POINTERATOMIC_SIZE > 8
+#if MAX_POINTERATOMIC_SIZE >= 16
     case 16: {
         uint128_t y = *(uint128_t*)expected;
         success = jl_atomic_cmpswap((uint128_t*)dst, &y, *(uint128_t*)src);
         break;
     }
-#else
-#error MAX_POINTERATOMIC_SIZE too large
 #endif
     default:
         abort();
@@ -941,58 +940,91 @@ JL_DLLEXPORT jl_value_t *jl_atomic_cmpswap_bits(jl_datatype_t *dt, char *dst, co
     jl_ptls_t ptls = jl_get_ptls_states();
     jl_value_t *y = jl_gc_alloc(ptls, isptr ? nb : tuptyp->size, isptr ? dt : tuptyp);
     int success;
+    jl_datatype_t *et = (jl_datatype_t*)jl_typeof(expected);
     switch (nb) {
+    case  0: {
+        success = (dt == et);
+        break;
+    }
     case  1: {
         uint8_t *y8 = (uint8_t*)y;
-        *y8 = *(uint8_t*)expected;
-        success = jl_atomic_cmpswap((uint8_t*)dst, y8, *(uint8_t*)src);
+        if (dt == et) {
+            *y8 = *(uint8_t*)expected;
+            success = jl_atomic_cmpswap((uint8_t*)dst, y8, *(uint8_t*)src);
+        }
+        else {
+            *y8 = jl_atomic_load((uint8_t*)dst);
+            success = 0;
+        }
         break;
     }
     case  2: {
         uint16_t *y16 = (uint16_t*)y;
-        *y16 = *(uint16_t*)expected;
-        while (1) {
-            success = jl_atomic_cmpswap((uint16_t*)dst, y16, *(uint16_t*)src);
-            if (success || !dt->layout->haspadding || !jl_egal__bits(y, expected, dt))
-                break;
+        if (dt == et) {
+            *y16 = *(uint16_t*)expected;
+            while (1) {
+                success = jl_atomic_cmpswap((uint16_t*)dst, y16, *(uint16_t*)src);
+                if (success || !dt->layout->haspadding || !jl_egal__bits(y, expected, dt))
+                    break;
+            }
+        }
+        else {
+            *y16 = jl_atomic_load((uint16_t*)dst);
+            success = 0;
         }
         break;
     }
     case  4: {
         uint32_t *y32 = (uint32_t*)y;
-        *y32 = *(uint32_t*)expected;
-        while (1) {
-            success = jl_atomic_cmpswap((uint32_t*)dst, y32, *(uint32_t*)src);
-            if (success || !dt->layout->haspadding || !jl_egal__bits(y, expected, dt))
-                break;
+        if (dt == et) {
+            *y32 = *(uint32_t*)expected;
+            while (1) {
+                success = jl_atomic_cmpswap((uint32_t*)dst, y32, *(uint32_t*)src);
+                if (success || !dt->layout->haspadding || !jl_egal__bits(y, expected, dt))
+                    break;
+            }
+        }
+        else {
+            *y32 = jl_atomic_load((uint32_t*)dst);
+            success = 0;
         }
         break;
     }
-#if MAX_POINTERATOMIC_SIZE > 4
+#if MAX_POINTERATOMIC_SIZE >= 8
     case  8: {
         uint64_t *y64 = (uint64_t*)y;
-        *y64 = *(uint64_t*)expected;
-        while (1) {
-            success = jl_atomic_cmpswap((uint64_t*)dst, y64, *(uint64_t*)src);
-            if (success || !dt->layout->haspadding || !jl_egal__bits(y, expected, dt))
-                break;
+        if (dt == et) {
+            *y64 = *(uint64_t*)expected;
+            while (1) {
+                success = jl_atomic_cmpswap((uint64_t*)dst, y64, *(uint64_t*)src);
+                if (success || !dt->layout->haspadding || !jl_egal__bits(y, expected, dt))
+                    break;
+            }
+        }
+        else {
+            *y64 = jl_atomic_load((uint64_t*)dst);
+            success = 0;
         }
         break;
     }
 #endif
-#if MAX_POINTERATOMIC_SIZE > 8
+#if MAX_POINTERATOMIC_SIZE >= 16
     case 16: {
         uint128_t *y128 = (uint128_t*)y;
-        *y128 = *(uint128_t*)expected;
-        while (1) {
-            success = jl_atomic_cmpswap((uint128_t*)dst, y128, *(uint128_t*)src);
-            if (success || !dt->layout->haspadding || !jl_egal__bits(y, expected, dt))
-                break;
+        if (dt == et) {
+            *y128 = *(uint128_t*)expected;
+            while (1) {
+                success = jl_atomic_cmpswap((uint128_t*)dst, y128, *(uint128_t*)src);
+                if (success || !dt->layout->haspadding || !jl_egal__bits(y, expected, dt))
+                    break;
+            }
+        }
+        else {
+            *y128 = jl_atomic_load((uint128_t*)dst);
+            success = 0;
         }
         break;
     }
-#else
-#error MAX_POINTERATOMIC_SIZE too large
 #endif
     default:
         abort();
@@ -1569,12 +1601,9 @@ jl_value_t *modify_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_valu
                     if (isunion) {
                         size_t fsz = jl_field_size(st, i);
                         uint8_t *psel = &((uint8_t*)v)[offs + fsz - 1];
-                        unsigned nth = 0;
-                        if (!jl_find_union_component(ty, jl_typeof(r), &nth))
-                            assert(0 && "invalid field assignment to isbits union");
-                        success = (*psel == nth);
+                        success = (jl_typeof(r) == jl_nth_union_component(ty, *psel));
                         if (success) {
-                            nth = 0;
+                            unsigned nth = 0;
                             if (!jl_find_union_component(ty, yty, &nth))
                                 assert(0 && "invalid field assignment to isbits union");
                             *psel = nth;
@@ -1627,7 +1656,6 @@ jl_value_t *cmpswap_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_val
         JL_GC_POP();
     }
     else {
-        jl_value_t *rty = jl_typeof(r);
         int hasptr;
         int isunion = jl_is_uniontype(ty);
         if (isunion) {
@@ -1637,7 +1665,10 @@ jl_value_t *cmpswap_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_val
         else {
             hasptr = ((jl_datatype_t*)ty)->layout->npointers > 0;
         }
-        size_t fsz = jl_datatype_size((jl_datatype_t*)rty); // need to shrink-wrap the final copy
+        jl_value_t *rty = ty;
+        size_t fsz;
+        if (!isunion)
+            fsz = jl_datatype_size((jl_datatype_t*)rty); // need to shrink-wrap the final copy
         int needlock = (isatomic && fsz > MAX_ATOMIC_SIZE);
         if (isatomic && !needlock) {
             r = jl_atomic_cmpswap_bits((jl_datatype_t*)rty, (char*)v + offs, r, rhs, fsz);
@@ -1646,21 +1677,12 @@ jl_value_t *cmpswap_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_val
                 jl_gc_multi_wb(v, rhs); // rhs is immutable
         }
         else {
+            jl_ptls_t ptls = jl_get_ptls_states();
             uint8_t *psel;
-            unsigned nth;
-            int success;
             if (isunion) {
                 size_t fsz = jl_field_size(st, i);
                 psel = &((uint8_t*)v)[offs + fsz - 1];
-                nth = 0;
-                success = jl_find_union_component(ty, rty, &nth);
-                uint8_t sel = *psel;
-                if (success)
-                    success = nth == sel;
-                rty = jl_nth_union_component(ty, sel);
-            }
-            else {
-                success = rty == ty;
+                rty = jl_nth_union_component(rty, *psel);
             }
             jl_value_t *params[2];
             params[0] = rty;
@@ -1668,12 +1690,13 @@ jl_value_t *cmpswap_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_val
             jl_datatype_t *tuptyp = jl_apply_tuple_type_v(params, 2);
             JL_GC_PROMISE_ROOTED(tuptyp); // (JL_ALWAYS_LEAFTYPE)
             assert(!jl_field_isptr(tuptyp, 0));
-            jl_ptls_t ptls = jl_get_ptls_states();
             r = jl_gc_alloc(ptls, tuptyp->size, (jl_value_t*)tuptyp);
+            int success = (rty == jl_typeof(expected));
             if (needlock)
                 jl_lock_value(v);
+            size_t fsz = jl_datatype_size((jl_datatype_t*)rty); // need to shrink-wrap the final copy
+            memcpy((char*)r, (char*)v + offs, fsz);
             if (success) {
-                memcpy((char*)r, (char*)v + offs, fsz);
                 if (((jl_datatype_t*)rty)->layout->haspadding)
                     success = jl_egal__bits(r, expected, (jl_datatype_t*)rty);
                 else
@@ -1681,10 +1704,10 @@ jl_value_t *cmpswap_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_val
             }
             *((uint8_t*)r + fsz) = success ? 1 : 0;
             if (success) {
-                rty = jl_typeof(rhs);
-                fsz = jl_datatype_size((jl_datatype_t*)rty); // need to shrink-wrap the final copy
+                jl_value_t *rty = jl_typeof(rhs);
+                size_t fsz = jl_datatype_size((jl_datatype_t*)rty); // need to shrink-wrap the final copy
                 if (isunion) {
-                    nth = 0;
+                    unsigned nth = 0;
                     if (!jl_find_union_component(ty, rty, &nth))
                         assert(0 && "invalid field assignment to isbits union");
                     *psel = nth;
@@ -1696,7 +1719,7 @@ jl_value_t *cmpswap_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_val
             if (needlock)
                 jl_unlock_value(v);
         }
-        r = undefref_check((jl_datatype_t*)ty, r);
+        r = undefref_check((jl_datatype_t*)rty, r);
         if (__unlikely(r == NULL))
             jl_throw(jl_undefref_exception);
     }

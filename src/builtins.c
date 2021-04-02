@@ -969,8 +969,11 @@ JL_CALLABLE(jl_f_cmpswapfield)
     if (isatomic == (success_order == jl_memory_order_notatomic))
         jl_atomic_error(isatomic ? "cmpswapfield!: atomic field cannot be written non-atomically"
                                  : "cmpswapfield!: non-atomic field cannot be written atomically");
+    if (isatomic == (failure_order == jl_memory_order_notatomic))
+        jl_atomic_error(isatomic ? "cmpswapfield!: atomic field cannot be accessed non-atomically"
+                                 : "cmpswapfield!: non-atomic field cannot be accessed atomically");
     if (failure_order > success_order)
-        jl_atomic_error("cmpswapfield!: invalid atomic ordering");
+        jl_atomic_error("invalid atomic ordering");
     v = cmpswap_nth_field(st, v, idx, args[2], args[3], isatomic); // always seq_cst, if isatomic needed at all
     return v;
 }

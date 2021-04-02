@@ -6624,7 +6624,7 @@ static std::pair<std::unique_ptr<Module>, jl_llvm_functions_t>
                         ConstantInt::get(T_size, offsetof(jl_opaque_closure_t, captures)));
 
                 jl_cgval_t closure_env = typed_load(ctx, envaddr, NULL, (jl_value_t*)jl_any_type,
-                    theArg.tbaa, nullptr, false, AtomicOrdering::NotAtomic, false, sizeof(void*));
+                    theArg.tbaa, nullptr, true, AtomicOrdering::NotAtomic, false, sizeof(void*));
                 theArg = convert_julia_type(ctx, closure_env, vi.value.typ);
             }
 

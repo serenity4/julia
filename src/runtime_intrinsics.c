@@ -209,8 +209,6 @@ JL_DLLEXPORT jl_value_t *jl_atomic_pointercmpswap(jl_value_t *p, jl_value_t *exp
             jl_error("pointercmpswap: invalid pointer");
         if (jl_typeof(x) != ety)
             jl_type_error("pointercmpswap", ety, x);
-        if (jl_typeof(expected) != ety)
-            jl_type_error("pointercmpswap", ety, expected);
         size_t nb = jl_datatype_size(ety);
         if ((nb & (nb - 1)) != 0 || nb > MAX_POINTERATOMIC_SIZE)
             jl_error("pointercmpswap: invalid atomic operation");
