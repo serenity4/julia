@@ -485,7 +485,6 @@ julia> z
 
 The following forms are also planned, but not yet implemented:
 ```julia
-# @atomic +!(a.x, 1) # increment field x of a
 # @atomic a.x = +(a.x, 1) # increment field x of a
 # @atomic a.x = +(_, 1) # increment field x of a
 ```

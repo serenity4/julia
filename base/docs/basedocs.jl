@@ -2693,7 +2693,7 @@ See also [`setfield!`](@ref Core.setfield!),
 Base.setproperty!
 
 """
-    swapproperty!(x, f::Symbol, v, order::Symbol=:notatomic)
+    swapproperty!(x, f::Symbol, v, order::Symbol=:not_atomic)
 
 The syntax `@atomic a.b, _ = c, a.b` returns `(c, swapproperty!(a, :b, c, :sequentially_consistent))`,
 where there must be one getfield expression common to both sides.
@@ -2704,7 +2704,7 @@ and [`setproperty!`](@ref Base.setproperty!).
 Base.swapproperty!
 
 """
-    modifyproperty!(x, f::Symbol, op, v, order::Symbol=:notatomic)
+    modifyproperty!(x, f::Symbol, op, v, order::Symbol=:not_atomic)
 
 The syntax `@atomic a().b = max(a().b, c)` returns `modifyproperty!(a(), :b,
 max, c, :sequentially_consistent))`, where the first argument must be a
@@ -2716,7 +2716,7 @@ and [`setproperty!`](@ref Base.setproperty!).
 Base.modifyproperty!
 
 """
-    cmpswapproperty!(x, f::Symbol, expected, desired, success_order::Symbol=:notatomic, fail_order::Symbol=success_order)
+    cmpswapproperty!(x, f::Symbol, expected, desired, success_order::Symbol=:not_atomic, fail_order::Symbol=success_order)
 
 Perform a compare-and-swap operation on `x.f` from `expected` to `desired`, per
 egal (there is no convenient `@atomic` syntax for this).

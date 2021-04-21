@@ -183,14 +183,14 @@ for TT in (Int8, Int16, Int32, Int64, Int128, Int256, Int512, Complex{Int32}, Co
             @test_throws TypeError Core.Intrinsics.atomic_pointercmpswap(p, T(100), S(2), :sequentially_consistent, :sequentially_consistent)
         end
         @test Core.Intrinsics.pointerref(p, 1, 1) === T(10) === r[]
-        if sizeof(r) > 2 * sizeof(Int)
-            @test_throws ErrorException("pointerref: invalid atomic operation") Core.Intrinsics.atomic_pointerref(p, :sequentially_consistent)
-            @test_throws ErrorException("pointerset: invalid atomic operation") Core.Intrinsics.atomic_pointerset(p, T(1), :sequentially_consistent)
-            @test_throws ErrorException("pointerswap: invalid atomic operation") Core.Intrinsics.atomic_pointerswap(p, T(100), :sequentially_consistent)
-            @test_throws ErrorException("pointerref: invalid atomic operation") Core.Intrinsics.atomic_pointermodify(p, add, T(1), :sequentially_consistent)
-            @test_throws ErrorException("pointerref: invalid atomic operation") Core.Intrinsics.atomic_pointermodify(p, swap, S(1), :sequentially_consistent)
-            @test_throws ErrorException("pointercmpswap: invalid atomic operation") Core.Intrinsics.atomic_pointercmpswap(p, T(100), T(2), :sequentially_consistent, :sequentially_consistent)
-            @test_throws ErrorException("pointercmpswap: invalid atomic operation") Core.Intrinsics.atomic_pointercmpswap(p, S(100), T(2), :sequentially_consistent, :sequentially_consistent)
+        if sizeof(r) > 8
+            @test_throws ErrorException("pointerref: invalid pointer for atomic operation") Core.Intrinsics.atomic_pointerref(p, :sequentially_consistent)
+            @test_throws ErrorException("pointerset: invalid pointer for atomic operation") Core.Intrinsics.atomic_pointerset(p, T(1), :sequentially_consistent)
+            @test_throws ErrorException("pointerswap: invalid pointer for atomic operation") Core.Intrinsics.atomic_pointerswap(p, T(100), :sequentially_consistent)
+            @test_throws ErrorException("pointerref: invalid pointer for atomic operation") Core.Intrinsics.atomic_pointermodify(p, add, T(1), :sequentially_consistent)
+            @test_throws ErrorException("pointerref: invalid pointer for atomic operation") Core.Intrinsics.atomic_pointermodify(p, swap, S(1), :sequentially_consistent)
+            @test_throws ErrorException("pointercmpswap: invalid pointer for atomic operation") Core.Intrinsics.atomic_pointercmpswap(p, T(100), T(2), :sequentially_consistent, :sequentially_consistent)
+            @test_throws ErrorException("pointercmpswap: invalid pointer for atomic operation") Core.Intrinsics.atomic_pointercmpswap(p, S(100), T(2), :sequentially_consistent, :sequentially_consistent)
             @test Core.Intrinsics.pointerref(p, 1, 1) === T(10) === r[]
         else
             TT !== Any && @test_throws TypeError Core.Intrinsics.atomic_pointermodify(p, swap, S(1), :sequentially_consistent)

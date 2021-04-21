@@ -36,10 +36,9 @@ Command-line option changes
 Multi-threading changes
 -----------------------
 * If the `JULIA_NUM_THREADS` environment variable is set to `auto`, then the number of threads will be set to the number of CPU threads ([#38952])
-
-* Intrinsics for atomic pointer operations are now defined for certain byte sizes.
+* Intrinsics for atomic pointer operations are now defined for certain byte sizes. ([#37847])
 * Support for declaring and using individual fields of a mutable struct as
-  atomic now available.
+  atomic now available. ([#37847])
 
 
 Build system changes

@@ -90,7 +90,7 @@ JL_DLLEXPORT jl_value_t *jl_atomic_pointerref(jl_value_t *p, jl_value_t *order)
             jl_error("pointerref: invalid pointer");
         size_t nb = jl_datatype_size(ety);
         if ((nb & (nb - 1)) != 0 || nb > MAX_POINTERATOMIC_SIZE)
-            jl_error("pointerref: invalid atomic operation");
+            jl_error("pointerref: invalid pointer for atomic operation");
         return jl_atomic_new_bits(ety, pp);
     }
 }
@@ -112,7 +112,7 @@ JL_DLLEXPORT jl_value_t *jl_atomic_pointerset(jl_value_t *p, jl_value_t *x, jl_v
             jl_type_error("pointerset", ety, x);
         size_t nb = jl_datatype_size(ety);
         if ((nb & (nb - 1)) != 0 || nb > MAX_POINTERATOMIC_SIZE)
-            jl_error("pointerset: invalid atomic operation");
+            jl_error("pointerset: invalid pointer for atomic operation");
         jl_atomic_store_bits(pp, x, nb);
     }
     return p;
@@ -136,7 +136,7 @@ JL_DLLEXPORT jl_value_t *jl_atomic_pointerswap(jl_value_t *p, jl_value_t *x, jl_
             jl_type_error("pointerswap", ety, x);
         size_t nb = jl_datatype_size(ety);
         if ((nb & (nb - 1)) != 0 || nb > MAX_POINTERATOMIC_SIZE)
-            jl_error("pointerswap: invalid atomic operation");
+            jl_error("pointerswap: invalid pointer for atomic operation");
         y = jl_atomic_swap_bits(ety, pp, x, nb);
     }
     return y;
@@ -211,7 +211,7 @@ JL_DLLEXPORT jl_value_t *jl_atomic_pointercmpswap(jl_value_t *p, jl_value_t *exp
             jl_type_error("pointercmpswap", ety, x);
         size_t nb = jl_datatype_size(ety);
         if ((nb & (nb - 1)) != 0 || nb > MAX_POINTERATOMIC_SIZE)
-            jl_error("pointercmpswap: invalid atomic operation");
+            jl_error("pointercmpswap: invalid pointer for atomic operation");
         return jl_atomic_cmpswap_bits((jl_datatype_t*)ety, pp, expected, x, nb);
     }
 }

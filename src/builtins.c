@@ -824,7 +824,7 @@ enum jl_memory_order jl_get_atomic_order(jl_sym_t *order, char loading, char sto
 enum jl_memory_order jl_get_atomic_order_checked(jl_sym_t *order, char loading, char storing)
 {
     enum jl_memory_order mo = jl_get_atomic_order(order, loading, storing);
-    if (mo < 0) // notatomic or invalid
+    if (mo < 0) // invalid
         jl_atomic_error("invalid atomic ordering");
     return mo;
 }
