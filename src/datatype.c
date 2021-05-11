@@ -1219,8 +1219,8 @@ JL_DLLEXPORT jl_value_t *jl_box_bool(int8_t x)
 
 JL_DLLEXPORT jl_value_t *jl_new_struct(jl_datatype_t *type, ...)
 {
-    jl_ptls_t ptls = jl_get_ptls_states();
     if (type->instance != NULL) return type->instance;
+    jl_ptls_t ptls = jl_get_ptls_states();
     va_list args;
     size_t nf = jl_datatype_nfields(type);
     va_start(args, type);
@@ -1318,9 +1318,9 @@ JL_DLLEXPORT jl_value_t *jl_new_structt(jl_datatype_t *type, jl_value_t *tup)
 
 JL_DLLEXPORT jl_value_t *jl_new_struct_uninit(jl_datatype_t *type)
 {
-    jl_ptls_t ptls = jl_get_ptls_states();
     if (type->instance != NULL) return type->instance;
     size_t size = jl_datatype_size(type);
+    jl_ptls_t ptls = jl_get_ptls_states();
     jl_value_t *jv = jl_gc_alloc(ptls, size, type);
     if (size > 0)
         memset(jl_data_ptr(jv), 0, size);
@@ -1389,16 +1389,20 @@ JL_DLLEXPORT jl_value_t *jl_get_nth_field(jl_value_t *v, size_t i)
             return ((jl_datatype_t*)ty)->instance;
     }
     jl_value_t *r;
-    int needlock = (isatomic && jl_datatype_size(ty) > MAX_ATOMIC_SIZE);
+    size_t fsz = jl_datatype_size(ty);
+    int needlock = (isatomic && fsz > MAX_ATOMIC_SIZE);
     if (isatomic && !needlock) {
         r = jl_atomic_new_bits(ty, (char*)v + offs);
     }
+    else if (needlock) {
+        jl_ptls_t ptls = jl_get_ptls_states();
+        r = jl_gc_alloc(ptls, fsz, ty);
+        jl_lock_value(v);
+        memcpy((char*)r, (char*)v + offs, fsz);
+        jl_unlock_value(v);
+    }
     else {
-        if (needlock)
-            jl_lock_value(v);
         r = jl_new_bits(ty, (char*)v + offs);
-        if (needlock)
-            jl_unlock_value(v);
     }
     return undefref_check((jl_datatype_t*)ty, r);
 }
@@ -1484,12 +1488,13 @@ void set_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_value_t *rhs, 
             if (hasptr)
                 jl_gc_multi_wb(v, rhs); // rhs is immutable
         }
+        else if (needlock) {
+            jl_lock_value(v);
+            memcpy((char*)v + offs, (char*)rhs, fsz);
+            jl_unlock_value(v);
+        }
         else {
-            if (needlock)
-                jl_lock_value(v);
             memassign_safe(hasptr, v, (char*)v + offs, rhs, fsz);
-            if (needlock)
-                jl_unlock_value(v);
         }
     }
 }
@@ -1536,13 +1541,21 @@ jl_value_t *swap_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_value_
                 jl_gc_multi_wb(v, rhs); // rhs is immutable
         }
         else {
-            if (needlock)
+            if (needlock) {
+                jl_ptls_t ptls = jl_get_ptls_states();
+                r = jl_gc_alloc(ptls, fsz, ty);
                 jl_lock_value(v);
-            if (!isunion)
-                r = undefref_check((jl_datatype_t*)ty, jl_new_bits(ty, (char*)v + offs));
-            memassign_safe(hasptr, v, (char*)v + offs, rhs, fsz);
-            if (needlock)
+                memcpy((char*)r, (char*)v + offs, fsz);
+                memcpy((char*)v + offs, (char*)rhs, fsz);
                 jl_unlock_value(v);
+            }
+            else {
+                if (!isunion)
+                    r = jl_new_bits(ty, (char*)v + offs);
+                memassign_safe(hasptr, v, (char*)v + offs, rhs, fsz);
+            }
+            if (needlock || !isunion)
+                r = undefref_check((jl_datatype_t*)ty, r);
         }
     }
     if (__unlikely(r == NULL))
@@ -1610,16 +1623,18 @@ jl_value_t *modify_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_valu
                             if (jl_is_datatype_singleton((jl_datatype_t*)yty))
                                 break;
                         }
+                        fsz = jl_datatype_size((jl_datatype_t*)yty); // need to shrink-wrap the final copy
                     }
-                    fsz = jl_datatype_size((jl_datatype_t*)yty); // need to shrink-wrap the final copy
+                    else {
+                        assert(yty == ty && rty == ty);
+                    }
                     memassign_safe(hasptr, v, (char*)v + offs, y, fsz);
                 }
-                if (!success)
-                    r = jl_new_bits(ty, (char*)v + offs);
                 if (needlock)
                     jl_unlock_value(v);
                 if (success)
                     break;
+                r = jl_get_nth_field(v, i);
             }
         }
         args[0] = r;
@@ -1658,18 +1673,20 @@ jl_value_t *cmpswap_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_val
     else {
         int hasptr;
         int isunion = jl_is_uniontype(ty);
+        int needlock;
+        jl_value_t *rty = ty;
+        size_t fsz;
         if (isunion) {
             assert(!isatomic);
             hasptr = 0;
+            needlock = 0;
+            isatomic = 0; // this makes GCC happy
         }
         else {
             hasptr = ((jl_datatype_t*)ty)->layout->npointers > 0;
-        }
-        jl_value_t *rty = ty;
-        size_t fsz;
-        if (!isunion)
             fsz = jl_datatype_size((jl_datatype_t*)rty); // need to shrink-wrap the final copy
-        int needlock = (isatomic && fsz > MAX_ATOMIC_SIZE);
+            needlock = (isatomic && fsz > MAX_ATOMIC_SIZE);
+        }
         if (isatomic && !needlock) {
             r = jl_atomic_cmpswap_bits((jl_datatype_t*)rty, (char*)v + offs, r, rhs, fsz);
             int success = *((uint8_t*)r + fsz);
