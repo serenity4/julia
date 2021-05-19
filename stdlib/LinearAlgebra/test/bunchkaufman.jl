@@ -171,4 +171,22 @@ end
     end
 end
 
+@testset "adjoint of BunchKaufman" begin
+    Ar = randn(5, 5)
+    Ar = Ar + Ar'
+    Actmp = complex.(randn(5, 5), randn(5, 5))
+    Ac1 = Actmp + Actmp'
+    Ac2 = Actmp + transpose(Actmp)
+    b = ones(size(Ar, 1))
+
+    F = bunchkaufman(Ar)
+    @test F\b == F'\b
+
+    F = bunchkaufman(Ac1)
+    @test F\b == F'\b
+
+    F = bunchkaufman(Ac2)
+    @test_throws ArgumentError("adjoint not implemented for complex symmetric matrices") F'
+end
+
 end # module TestBunchKaufman
