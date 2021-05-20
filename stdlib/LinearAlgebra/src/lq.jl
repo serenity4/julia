@@ -306,17 +306,6 @@ _rightappdimmismatch(rowsorcols) =
         "or (2) the number of rows of that (LQPackedQ) matrix's internal representation ",
         "(the factorization's originating matrix's number of rows)")))
 
-
-function (\)(A::LQ{TA},B::StridedVecOrMat{TB}) where {TA,TB}
-    S = promote_type(TA,TB)
-    m, n = size(A)
-    m ≤ n || throw(DimensionMismatch("LQ solver does not support overdetermined systems (more rows than columns)"))
-    m == size(B,1) || throw(DimensionMismatch("Both inputs should have the same number of rows"))
-    AA = Factorization{S}(A)
-    X = _zeros(S, B, n)
-    X[1:size(B, 1), :] = B
-    return ldiv!(AA, X)
-end
 # With a real lhs and complex rhs with the same precision, we can reinterpret
 # the complex rhs as a real rhs with twice the number of columns
 function (\)(F::LQ{T}, B::VecOrMat{Complex{T}}) where T<:BlasReal
@@ -332,10 +321,23 @@ end
 
 function ldiv!(A::LQ{T}, B::StridedVecOrMat{T}) where T
     require_one_based_indexing(B)
+    m, n = size(A)
+    m ≤ n || throw(DimensionMismatch("LQ solver does not support overdetermined systems (more rows than columns)"))
+
     ldiv!(LowerTriangular(A.L), view(B, 1:size(A,1), axes(B,2)))
     return lmul!(adjoint(A.Q), B)
 end
 
+function ldiv!(Fadj::Adjoint{T,<:LQ{T}}, B::StridedVecOrMat{T}) where T
+    require_one_based_indexing(B)
+    m, n = size(Fadj)
+    m ≤ n || throw(DimensionMismatch("LQ solver does not support overdetermined systems (more rows than columns)"))
+
+    F = parent(Fadj)
+    lmul!(F.Q, B)
+    ldiv!(UpperTriangular(adjoint(F.L)), view(B, 1:size(F,1), axes(B,2)))
+    return B
+end
 
 # In LQ factorization, `Q` is expressed as the product of the adjoint of the
 # reflectors.  Thus, `det` has to be conjugated.
