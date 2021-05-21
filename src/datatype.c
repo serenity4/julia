@@ -1640,8 +1640,10 @@ jl_value_t *modify_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_valu
         args[0] = r;
         jl_gc_safepoint();
     }
+    // args[0] == r (old); args[1] == y (new)
+    args[0] = jl_f_tuple(NULL, args, 2);
     JL_GC_POP();
-    return r;
+    return args[0];
 }
 
 jl_value_t *cmpswap_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_value_t *expected, jl_value_t *rhs, int isatomic)

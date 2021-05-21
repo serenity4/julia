@@ -173,8 +173,10 @@ JL_DLLEXPORT jl_value_t *jl_atomic_pointermodify(jl_value_t *p, jl_value_t *f, j
         args[0] = expected;
         jl_gc_safepoint();
     }
+    // args[0] == expected (old); args[1] == y (new)
+    args[0] = jl_f_tuple(NULL, args, 2);
     JL_GC_POP();
-    return expected;
+    return args[0];
 }
 
 JL_DLLEXPORT jl_value_t *jl_atomic_pointercmpswap(jl_value_t *p, jl_value_t *expected, jl_value_t *x, jl_value_t *success_order_sym, jl_value_t *failure_order_sym)

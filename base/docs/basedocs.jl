@@ -1995,8 +1995,9 @@ These atomically perform the operations to get and set a field after applying
 the function `op`.
 
     y = getfield!(value, name)
-    setfield!(value, name, op(y, x))
-    return y
+    z = op(y, x)
+    setfield!(value, name, z)
+    return y, z
 
 If supported by the hardware (for example, atomic increment), this may be
 optimized to the appropriate hardware instruction, otherwise it'll use a loop.
@@ -2706,9 +2707,9 @@ Base.swapproperty!
 """
     modifyproperty!(x, f::Symbol, op, v, order::Symbol=:not_atomic)
 
-The syntax `@atomic a().b = max(a().b, c)` returns `modifyproperty!(a(), :b,
+The syntax `@atomic! max(a().b, c)` returns `modifyproperty!(a(), :b,
 max, c, :sequentially_consistent))`, where the first argument must be a
-`getfield`/`setfield!` expression and is modified atomically.
+`getfield` expression and is modified atomically.
 
 See also [`modifyfield!`](@ref Core.modifyfield!)
 and [`setproperty!`](@ref Base.setproperty!).
@@ -2719,7 +2720,8 @@ Base.modifyproperty!
     cmpswapproperty!(x, f::Symbol, expected, desired, success_order::Symbol=:not_atomic, fail_order::Symbol=success_order)
 
 Perform a compare-and-swap operation on `x.f` from `expected` to `desired`, per
-egal (there is no convenient `@atomic` syntax for this).
+egal. The syntax `@atomic_replace! x.f expected => desired` can be used instead
+of the function call form.
 
 See also [`cmpswapfield!`](@ref Core.cmpswapfield!)
 and [`setproperty!`](@ref Base.setproperty!).

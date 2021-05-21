@@ -74,8 +74,8 @@ end
     @test getfield(r, :x, :sequentially_consistent) === T(12345_100)
     @test cmpswapfield!(r, :x, T(12345_1), T(12345_1), :sequentially_consistent, :sequentially_consistent) === (T(12345_100), false)
     @test getfield(r, :x, :sequentially_consistent) === T(12345_100)
-    @test modifyfield!(r, :x, add, 1, :sequentially_consistent) === T(12345_100)
-    @test modifyfield!(r, :x, add, 1, :sequentially_consistent) === T(12345_101)
+    @test modifyfield!(r, :x, add, 1, :sequentially_consistent) === (T(12345_100), T(12345_101))
+    @test modifyfield!(r, :x, add, 1, :sequentially_consistent) === (T(12345_101), T(12345_102))
     @test getfield(r, :x, :sequentially_consistent) === T(12345_102)
     @test swapfield!(r, :x, T(12345_1), :sequentially_consistent) === T(12345_102)
     @test getfield(r, :x, :sequentially_consistent) === T(12345_1)
@@ -174,7 +174,7 @@ test_field_operators(ARefxy{Complex{Int128}}(12345_10, 12345_20))
     @test_throws ConcurrencyViolationError("modifyfield!: non-atomic field cannot be written atomically") modifyfield!(r, :y, swap, y, :release)
     @test_throws ConcurrencyViolationError("modifyfield!: non-atomic field cannot be written atomically") modifyfield!(r, :y, swap, y, :acquire_release)
     @test_throws ConcurrencyViolationError("modifyfield!: non-atomic field cannot be written atomically") modifyfield!(r, :y, swap, y, :sequentially_consistent)
-    @test modifyfield!(r, :y, swap, x, :not_atomic) === y
+    @test modifyfield!(r, :y, swap, x, :not_atomic) === (y, x)
 
     @test_throws ConcurrencyViolationError("invalid atomic ordering") cmpswapfield!(r, :y, y, y, :u, :not_atomic)
     @test_throws ConcurrencyViolationError("cmpswapfield!: non-atomic field cannot be written atomically") cmpswapfield!(r, :y, y, y, :unordered, :not_atomic)
@@ -208,12 +208,12 @@ test_field_operators(ARefxy{Complex{Int128}}(12345_10, 12345_20))
     @test_throws ConcurrencyViolationError("invalid atomic ordering") modifyfield!(r, :x, swap, x, :u)
     @test_throws ConcurrencyViolationError("modifyfield!: atomic field cannot be written non-atomically") modifyfield!(r, :x, swap, x, :not_atomic)
     @test_throws ConcurrencyViolationError("modifyfield!: atomic field cannot be written non-atomically") modifyfield!(r, :x, swap, x)
-    @test modifyfield!(r, :x, swap, x, :unordered) === x
-    @test modifyfield!(r, :x, swap, x, :monotonic) === x
-    @test modifyfield!(r, :x, swap, x, :acquire) === x
-    @test modifyfield!(r, :x, swap, x, :release) === x
-    @test modifyfield!(r, :x, swap, x, :acquire_release) === x
-    @test modifyfield!(r, :x, swap, x, :sequentially_consistent) === x
+    @test modifyfield!(r, :x, swap, x, :unordered) === (x, x)
+    @test modifyfield!(r, :x, swap, x, :monotonic) === (x, x)
+    @test modifyfield!(r, :x, swap, x, :acquire) === (x, x)
+    @test modifyfield!(r, :x, swap, x, :release) === (x, x)
+    @test modifyfield!(r, :x, swap, x, :acquire_release) === (x, x)
+    @test modifyfield!(r, :x, swap, x, :sequentially_consistent) === (x, x)
 
     @test_throws ConcurrencyViolationError("invalid atomic ordering") cmpswapfield!(r, :x, x, x, :u, :not_atomic)
     @test_throws ConcurrencyViolationError("cmpswapfield!: atomic field cannot be written non-atomically") cmpswapfield!(r, :x, x, x)
@@ -283,3 +283,57 @@ test_field_undef(ARefxy{Any})
 test_field_undef(ARefxy{Union{Nothing,Integer}})
 test_field_undef(ARefxy{UndefComplex{Any}})
 test_field_undef(ARefxy{UndefComplex{UndefComplex{Any}}})
+
+@test_throws ErrorException @macroexpand @atomic foo()
+@test_throws ErrorException @macroexpand @atomic foo += bar
+@test_throws ErrorException @macroexpand @atomic! foo += bar
+@test_throws ErrorException @macroexpand @atomic! foo = bar
+@test_throws ErrorException @macroexpand @atomic! foo()
+@test_throws ErrorException @macroexpand @atomic! foo(bar)
+@test_throws ErrorException @macroexpand @atomic! foo(bar, baz)
+@test_throws ErrorException @macroexpand @atomic! foo(bar, baz, bax)
+@test_throws ErrorException @macroexpand @atomic_replace! foo bar
+
+# test macroexpansions
+let a = ARefxy(1, -1)
+    @test 1 === @atomic a.x
+    @test 2 === @atomic :sequentially_consistent a.x = 2
+    @test 3 === @atomic :monotonic a.x = 3
+    @test_throws ConcurrencyViolationError @atomic :not_atomic a.x = 2
+    @test_throws ConcurrencyViolationError @atomic :not_atomic a.x
+    @test_throws ConcurrencyViolationError @atomic :not_atomic a.x += 1
+
+    @test 3 === @atomic :monotonic a.x
+    @test 5 === @atomic a.x += 2
+    @test 4 === @atomic :monotonic a.x -= 1
+    @test 12 === @atomic :monotonic a.x *= 3
+
+    @test 12 === @atomic a.x
+    @test (12, 13) === @atomic! a.x + 1
+    @test (13, 15) === @atomic! :monotonic a.x + 2
+    @test (15, 19) === @atomic! a.x max 19
+    @test (19, 20) === @atomic! :monotonic a.x max 20
+    @test_throws ConcurrencyViolationError @atomic! :not_atomic a.x + 1
+    @test_throws ConcurrencyViolationError @atomic! :not_atomic a.x max 30
+
+    @test 20 === @atomic a.x
+    @test (20, 1) === @atomic! a.x = 1
+    @test (1, 2) === @atomic! :monotonic a.x = 2
+    @test_throws ConcurrencyViolationError @atomic! :not_atomic a.x = 1
+
+
+    @test 2 === @atomic a.x
+    @test (2, true) === @atomic_replace! a.x 2 => 1
+    @test (1, false) === @atomic_replace! :monotonic a.x 2 => 1
+    @test (1, false) === @atomic_replace! :monotonic :monotonic a.x 2 => 1
+    @test_throws ConcurrencyViolationError @atomic_replace! :not_atomic a.x 1 => 2
+    @test_throws ConcurrencyViolationError @atomic_replace! :monotonic :acquire a.x 1 => 2
+
+    @test 1 === @atomic a.x
+    xchg = 1 => 2
+    @test (1, true) === @atomic_replace! a.x xchg
+    @test (2, false) === @atomic_replace! :monotonic a.x xchg
+    @test (2, false) === @atomic_replace! :acquire_release :monotonic a.x xchg
+    @test_throws ConcurrencyViolationError @atomic_replace! :not_atomic a.x xchg
+    @test_throws ConcurrencyViolationError @atomic_replace! :monotonic :acquire a.x xchg
+end

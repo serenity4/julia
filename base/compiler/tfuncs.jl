@@ -487,7 +487,7 @@ add_tfunc(atomic_fence, 1, 1, (order) -> (@nospecialize; Nothing), 4)
 add_tfunc(atomic_pointerref, 2, 2, (a, order) -> (@nospecialize; pointer_eltype(a)), 4)
 add_tfunc(atomic_pointerset, 3, 3, (a, v, order) -> (@nospecialize; a), 5)
 add_tfunc(atomic_pointerswap, 3, 3, (a, v, order) -> (@nospecialize; pointer_eltype(a)), 5)
-add_tfunc(atomic_pointermodify, 4, 4, (a, op, v, order) -> (@nospecialize; pointer_eltype(a)), 5)
+add_tfunc(atomic_pointermodify, 4, 4, (a, op, v, order) -> (@nospecialize; T = pointer_eltype(a); Tuple{T, T}), 5)
 add_tfunc(atomic_pointercmpswap, 5, 5, (a, x, v, success_order, failure_order) -> (@nospecialize; Tuple{pointer_eltype(a), Bool}), 5)
 
 # more accurate typeof_tfunc for vararg tuples abstract only in length
@@ -911,8 +911,8 @@ setfield!_tfunc(o, f, v) = (@nospecialize; v)
 
 swapfield!_tfunc(o, f, v, order) = (@nospecialize; getfield_tfunc(o, f))
 swapfield!_tfunc(o, f, v) = (@nospecialize; getfield_tfunc(o, f))
-modifyfield!_tfunc(o, f, op, v, order) = (@nospecialize; getfield_tfunc(o, f))
-modifyfield!_tfunc(o, f, op, v) = (@nospecialize; getfield_tfunc(o, f)) # TODO: also model op(o.f, v) call
+modifyfield!_tfunc(o, f, op, v, order) = (@nospecialize; T = getfield_tfunc(o, f); Tuple{T, T})
+modifyfield!_tfunc(o, f, op, v) = (@nospecialize; T = getfield_tfunc(o, f); Tuple{T, T}) # TODO: also model op(o.f, v) call
 cmpswapfield!_tfunc(o, f, x, v, success_order, failure_order) = (@nospecialize; cmpswapfield!_tfunc(o, f, x, v))
 cmpswapfield!_tfunc(o, f, x, v, success_order) = (@nospecialize; cmpswapfield!_tfunc(o, f, x, v))
 cmpswapfield!_tfunc(o, f, x, v) = (@nospecialize; Tuple{widenconst(getfield_tfunc(o, f)), Bool})
