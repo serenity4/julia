@@ -371,4 +371,45 @@ end
     end
 end
 
+@testset "adjoint of QR" begin
+    n = 5
+    B = randn(5, 2)
+
+    @testset "size(b)=$(size(b))" for b in (B[:, 1], B)
+        @testset "size(A)=$(size(A))" for A in (
+            randn(n, n),
+            # Wide problems become minimum norm (in x) problems similarly to LQ
+            randn(n + 2, n),
+            complex.(randn(n, n), randn(n, n)))
+
+            @testset "QRCompactWY" begin
+                F = qr(A)
+                x = F'\b
+                @test x ≈ A'\b
+                @test length(size(x)) == length(size(b))
+            end
+
+            @testset "QR" begin
+                F = LinearAlgebra.qrfactUnblocked!(copy(A))
+                x = F'\b
+                @test x ≈ A'\b
+                @test length(size(x)) == length(size(b))
+            end
+
+            @testset "QRPivoted" begin
+                F = LinearAlgebra.qr(A, Val(true))
+                x = F'\b
+                @test x ≈ A'\b
+                @test length(size(x)) == length(size(b))
+            end
+        end
+        @test_throws DimensionMismatch("overdetermined systems are not supported")    qr(randn(n - 2, n))'\b
+        @test_throws DimensionMismatch("arguments must have the same number of rows") qr(randn(n, n + 1))'\b
+        @test_throws DimensionMismatch("overdetermined systems are not supported")    LinearAlgebra.qrfactUnblocked!(randn(n - 2, n))'\b
+        @test_throws DimensionMismatch("arguments must have the same number of rows") LinearAlgebra.qrfactUnblocked!(randn(n, n + 1))'\b
+        @test_throws DimensionMismatch("overdetermined systems are not supported")    qr(randn(n - 2, n), Val(true))'\b
+        @test_throws DimensionMismatch("arguments must have the same number of rows") qr(randn(n, n + 1), Val(true))'\b
+    end
+end
+
 end # module TestQR
