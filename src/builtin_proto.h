@@ -28,7 +28,7 @@ DECLARE_BUILTIN(arrayset);
 DECLARE_BUILTIN(arraysize);
 DECLARE_BUILTIN(_call_in_world);
 DECLARE_BUILTIN(_call_latest);
-DECLARE_BUILTIN(cmpswapfield);
+DECLARE_BUILTIN(replacefield);
 DECLARE_BUILTIN(const_arrayref);
 DECLARE_BUILTIN(_expr);
 DECLARE_BUILTIN(fieldtype);

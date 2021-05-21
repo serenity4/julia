@@ -12,7 +12,7 @@ const getproperty = Core.getfield
 const setproperty! = Core.setfield!
 const swapproperty! = Core.swapfield!
 const modifyproperty! = Core.modifyfield!
-const cmpswapproperty! = Core.cmpswapfield!
+const replaceproperty! = Core.replacefield!
 
 ccall(:jl_set_istopmod, Cvoid, (Any, Bool), Compiler, false)
 

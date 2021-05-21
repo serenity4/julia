@@ -732,7 +732,7 @@ export
     setproperty!,
     swapproperty!,
     modifyproperty!,
-    cmpswapproperty!,
+    replaceproperty!,
     fieldoffset,
     fieldname,
     fieldnames,

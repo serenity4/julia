@@ -2005,7 +2005,7 @@ optimized to the appropriate hardware instruction, otherwise it'll use a loop.
 modifyfield!
 
 """
-    cmpswapfield!(value, name::Symbol, cmp, expected, desired,
+    replacefield!(value, name::Symbol, cmp, expected, desired,
         [success_order::Symbol, [fail_order::Symbol=success_order]) =>
         (old, Bool)
 
@@ -2022,7 +2022,7 @@ a given value.
 If the operation is `===` on a supported type, we'll use the relevant processor
 instructions, otherwise it'll use a loop.
 """
-cmpswapfield!
+replacefield!
 
 """
     typeof(x)
@@ -2717,16 +2717,16 @@ and [`setproperty!`](@ref Base.setproperty!).
 Base.modifyproperty!
 
 """
-    cmpswapproperty!(x, f::Symbol, expected, desired, success_order::Symbol=:not_atomic, fail_order::Symbol=success_order)
+    replaceproperty!(x, f::Symbol, expected, desired, success_order::Symbol=:not_atomic, fail_order::Symbol=success_order)
 
 Perform a compare-and-swap operation on `x.f` from `expected` to `desired`, per
 egal. The syntax `@atomic_replace! x.f expected => desired` can be used instead
 of the function call form.
 
-See also [`cmpswapfield!`](@ref Core.cmpswapfield!)
+See also [`replacefield!`](@ref Core.replacefield!)
 and [`setproperty!`](@ref Base.setproperty!).
 """
-Base.cmpswapproperty!
+Base.replaceproperty!
 
 
 """

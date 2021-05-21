@@ -58,8 +58,8 @@ swapproperty!(x, f::Symbol, v, order::Symbol=:notatomic) =
     (@_inline_meta; Core.swapfield!(x, f, convert(fieldtype(typeof(x), f), v), order))
 modifyproperty!(x, f::Symbol, op, v, order::Symbol=:notatomic) =
     (@_inline_meta; Core.modifyfield!(x, f, op, v, order))
-cmpswapproperty!(x, f::Symbol, expected, desired, success_order::Symbol=:notatomic, fail_order::Symbol=success_order) =
-    (@_inline_meta; Core.cmpswapfield!(x, f, expected, convert(fieldtype(typeof(x), f), desired), success_order, fail_order))
+replaceproperty!(x, f::Symbol, expected, desired, success_order::Symbol=:notatomic, fail_order::Symbol=success_order) =
+    (@_inline_meta; Core.replacefield!(x, f, expected, convert(fieldtype(typeof(x), f), desired), success_order, fail_order))
 
 
 include("coreio.jl")

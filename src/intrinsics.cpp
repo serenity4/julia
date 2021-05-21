@@ -928,7 +928,7 @@ static jl_cgval_t emit_intrinsic(jl_codectx_t &ctx, intrinsic f, jl_value_t **ar
     case atomic_pointerset:
     case atomic_pointerswap:
     case atomic_pointermodify:
-    case atomic_pointercmpswap:
+    case atomic_pointerreplace:
         return emit_runtime_call(ctx, f, argv, nargs);
     case bitcast:
         return generic_bitcast(ctx, argv);

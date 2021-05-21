@@ -179,15 +179,15 @@ JL_DLLEXPORT jl_value_t *jl_atomic_pointermodify(jl_value_t *p, jl_value_t *f, j
     return args[0];
 }
 
-JL_DLLEXPORT jl_value_t *jl_atomic_pointercmpswap(jl_value_t *p, jl_value_t *expected, jl_value_t *x, jl_value_t *success_order_sym, jl_value_t *failure_order_sym)
+JL_DLLEXPORT jl_value_t *jl_atomic_pointerreplace(jl_value_t *p, jl_value_t *expected, jl_value_t *x, jl_value_t *success_order_sym, jl_value_t *failure_order_sym)
 {
-    JL_TYPECHK(pointercmpswap, pointer, p);
-    JL_TYPECHK(pointercmpswap, symbol, success_order_sym);
-    JL_TYPECHK(pointercmpswap, symbol, failure_order_sym);
+    JL_TYPECHK(pointerreplace, pointer, p);
+    JL_TYPECHK(pointerreplace, symbol, success_order_sym);
+    JL_TYPECHK(pointerreplace, symbol, failure_order_sym);
     enum jl_memory_order success_order = jl_get_atomic_order_checked((jl_sym_t*)success_order_sym, 1, 1);
     enum jl_memory_order failure_order = jl_get_atomic_order_checked((jl_sym_t*)failure_order_sym, 1, 0);
     if (failure_order > success_order)
-        jl_atomic_error("pointercmpswap: invalid atomic ordering");
+        jl_atomic_error("pointerreplace: invalid atomic ordering");
     // TODO: filter other invalid orderings
     jl_value_t *ety = jl_tparam0(jl_typeof(p));
     char *pp = (char*)jl_unbox_long(p);
@@ -208,12 +208,12 @@ JL_DLLEXPORT jl_value_t *jl_atomic_pointercmpswap(jl_value_t *p, jl_value_t *exp
     }
     else {
         if (!jl_is_datatype(ety))
-            jl_error("pointercmpswap: invalid pointer");
+            jl_error("pointerreplace: invalid pointer");
         if (jl_typeof(x) != ety)
-            jl_type_error("pointercmpswap", ety, x);
+            jl_type_error("pointerreplace", ety, x);
         size_t nb = jl_datatype_size(ety);
         if ((nb & (nb - 1)) != 0 || nb > MAX_POINTERATOMIC_SIZE)
-            jl_error("pointercmpswap: invalid pointer for atomic operation");
+            jl_error("pointerreplace: invalid pointer for atomic operation");
         return jl_atomic_cmpswap_bits((jl_datatype_t*)ety, pp, expected, x, nb);
     }
 }

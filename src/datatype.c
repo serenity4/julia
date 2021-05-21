@@ -1646,11 +1646,11 @@ jl_value_t *modify_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_valu
     return args[0];
 }
 
-jl_value_t *cmpswap_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_value_t *expected, jl_value_t *rhs, int isatomic)
+jl_value_t *replace_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_value_t *expected, jl_value_t *rhs, int isatomic)
 {
     jl_value_t *ty = jl_field_type_concrete(st, i);
     if (!jl_isa(rhs, ty))
-        jl_type_error("cmpswapfield!", ty, rhs);
+        jl_type_error("replacefield!", ty, rhs);
     size_t offs = jl_field_offset(st, i);
     jl_value_t *r = expected;
     if (jl_field_isptr(st, i)) {

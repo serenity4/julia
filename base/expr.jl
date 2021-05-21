@@ -604,7 +604,7 @@ Perform the conditional replacement expressed by the pair atomically, returning
 the values `(old, success::Bool)`. Where `success` indicates whether the
 replacement was completed.
 
-This operation translates to a `cmpswapproperty!(a.b, :x, expected, desired)` call.
+This operation translates to a `replaceproperty!(a.b, :x, expected, desired)` call.
 
 See [atomics](#man-atomics) in the manual for more details.
 
@@ -650,9 +650,9 @@ function make_atomic_replace!(success_order, fail_order, ex, old_new)
     ll, lr = esc(ex.args[1]), esc(ex.args[2])
     if is_expr(old_new, :call, 3) && old_new.args[1] === :(=>)
         exp, rep = esc(old_new.args[2]), esc(old_new.args[3])
-        return :(cmpswapproperty!($ll, $lr, $exp, $rep, $success_order, $fail_order))
+        return :(replaceproperty!($ll, $lr, $exp, $rep, $success_order, $fail_order))
     else
         old_new = esc(old_new)
-        return :(local old_new = $old_new::Pair; cmpswapproperty!($ll, $lr, old_new[1], old_new[2], $success_order, $fail_order))
+        return :(local old_new = $old_new::Pair; replaceproperty!($ll, $lr, old_new[1], old_new[2], $success_order, $fail_order))
     end
 end

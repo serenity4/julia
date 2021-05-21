@@ -948,33 +948,33 @@ JL_CALLABLE(jl_f_modifyfield)
     return v;
 }
 
-JL_CALLABLE(jl_f_cmpswapfield)
+JL_CALLABLE(jl_f_replacefield)
 {
     enum jl_memory_order success_order = jl_memory_order_notatomic;
-    JL_NARGS(cmpswapfield!, 4, 6);
+    JL_NARGS(replacefield!, 4, 6);
     if (nargs >= 5) {
-        JL_TYPECHK(cmpswapfield!, symbol, args[4]);
+        JL_TYPECHK(replacefield!, symbol, args[4]);
         success_order = jl_get_atomic_order_checked((jl_sym_t*)args[4], 1, 1);
     }
     enum jl_memory_order failure_order = success_order;
     if (nargs == 6) {
-        JL_TYPECHK(cmpswapfield!, symbol, args[5]);
+        JL_TYPECHK(replacefield!, symbol, args[5]);
         failure_order = jl_get_atomic_order_checked((jl_sym_t*)args[5], 1, 0);
     }
     // TODO: filter more invalid ordering combinations
     jl_value_t *v = args[0];
     jl_datatype_t *st = (jl_datatype_t*)jl_typeof(v);
-    size_t idx = get_checked_fieldindex("cmpswapfield!", st, v, args[1], 1);
+    size_t idx = get_checked_fieldindex("replacefield!", st, v, args[1], 1);
     int isatomic = !!jl_field_isatomic(st, idx);
     if (isatomic == (success_order == jl_memory_order_notatomic))
-        jl_atomic_error(isatomic ? "cmpswapfield!: atomic field cannot be written non-atomically"
-                                 : "cmpswapfield!: non-atomic field cannot be written atomically");
+        jl_atomic_error(isatomic ? "replacefield!: atomic field cannot be written non-atomically"
+                                 : "replacefield!: non-atomic field cannot be written atomically");
     if (isatomic == (failure_order == jl_memory_order_notatomic))
-        jl_atomic_error(isatomic ? "cmpswapfield!: atomic field cannot be accessed non-atomically"
-                                 : "cmpswapfield!: non-atomic field cannot be accessed atomically");
+        jl_atomic_error(isatomic ? "replacefield!: atomic field cannot be accessed non-atomically"
+                                 : "replacefield!: non-atomic field cannot be accessed atomically");
     if (failure_order > success_order)
         jl_atomic_error("invalid atomic ordering");
-    v = cmpswap_nth_field(st, v, idx, args[2], args[3], isatomic); // always seq_cst, if isatomic needed at all
+    v = replace_nth_field(st, v, idx, args[2], args[3], isatomic); // always seq_cst, if isatomic needed at all
     return v;
 }
 
@@ -1723,7 +1723,7 @@ void jl_init_primitives(void) JL_GC_DISABLED
     jl_builtin_setfield = add_builtin_func("setfield!",  jl_f_setfield);
     jl_builtin_swapfield = add_builtin_func("swapfield!",  jl_f_swapfield);
     jl_builtin_modifyfield = add_builtin_func("modifyfield!",  jl_f_modifyfield);
-    jl_builtin_cmpswapfield = add_builtin_func("cmpswapfield!",  jl_f_cmpswapfield);
+    jl_builtin_replacefield = add_builtin_func("replacefield!",  jl_f_replacefield);
     jl_builtin_fieldtype = add_builtin_func("fieldtype", jl_f_fieldtype);
     jl_builtin_nfields = add_builtin_func("nfields", jl_f_nfields);
     jl_builtin_isdefined = add_builtin_func("isdefined", jl_f_isdefined);

@@ -97,7 +97,7 @@
     ADD_I(atomic_pointerset, 3) \
     ADD_I(atomic_pointerswap, 3) \
     ADD_I(atomic_pointermodify, 4) \
-    ADD_I(atomic_pointercmpswap, 5) \
+    ADD_I(atomic_pointerreplace, 5) \
     /*  c interface */ \
     ADD_I(cglobal, 2) \
     ALIAS(llvmcall, llvmcall) \

@@ -189,7 +189,7 @@ jl_value_t **const*const get_tags(void) {
         INSERT_TAG(jl_builtin_setfield);
         INSERT_TAG(jl_builtin_swapfield);
         INSERT_TAG(jl_builtin_modifyfield);
-        INSERT_TAG(jl_builtin_cmpswapfield);
+        INSERT_TAG(jl_builtin_replacefield);
         INSERT_TAG(jl_builtin_fieldtype);
         INSERT_TAG(jl_builtin_arrayref);
         INSERT_TAG(jl_builtin_const_arrayref);
@@ -246,7 +246,7 @@ static const jl_fptr_args_t id_to_fptrs[] = {
     &jl_f__call_latest, &jl_f__call_in_world, &jl_f_isdefined,
     &jl_f_tuple, &jl_f_svec, &jl_f_intrinsic_call, &jl_f_invoke_kwsorter,
     &jl_f_getfield, &jl_f_setfield, &jl_f_swapfield, &jl_f_modifyfield,
-    &jl_f_cmpswapfield, &jl_f_fieldtype, &jl_f_nfields,
+    &jl_f_replacefield, &jl_f_fieldtype, &jl_f_nfields,
     &jl_f_arrayref, &jl_f_const_arrayref, &jl_f_arrayset, &jl_f_arraysize, &jl_f_apply_type,
     &jl_f_applicable, &jl_f_invoke, &jl_f_sizeof, &jl_f__expr, &jl_f__typevar,
     &jl_f_ifelse, &jl_f__structtype, &jl_f__abstracttype, &jl_f__primitivetype,
