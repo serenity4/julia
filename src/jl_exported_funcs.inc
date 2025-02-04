@@ -127,7 +127,6 @@
     XX(jl_exit_on_sigint) \
     XX(jl_exit_threaded_region) \
     XX(jl_expand) \
-    XX(jl_expand_and_resolve) \
     XX(jl_expand_stmt) \
     XX(jl_expand_stmt_with_loc) \
     XX(jl_expand_with_loc) \
@@ -196,6 +195,7 @@
     XX(jl_get_binding_for_method_def) \
     XX(jl_get_binding_or_error) \
     XX(jl_get_binding_wr) \
+    XX(jl_check_binding_currently_writable) \
     XX(jl_get_cpu_name) \
     XX(jl_get_cpu_features) \
     XX(jl_cpu_has_fma) \
@@ -388,7 +388,7 @@
     XX(jl_read_verify_header) \
     XX(jl_realloc) \
     XX(jl_register_newmeth_tracer) \
-    XX(jl_resolve_globals_in_ir) \
+    XX(jl_resolve_definition_effects_in_ir) \
     XX(jl_restore_excstack) \
     XX(jl_restore_incremental) \
     XX(jl_restore_package_image_from_file) \
@@ -449,7 +449,6 @@
     XX(jl_tagged_gensym) \
     XX(jl_take_buffer) \
     XX(jl_task_get_next) \
-    XX(jl_task_stack_buffer) \
     XX(jl_termios_size) \
     XX(jl_test_cpu_feature) \
     XX(jl_threadid) \

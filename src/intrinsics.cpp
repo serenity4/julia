@@ -83,10 +83,14 @@ const auto &float_func() {
             float_func[sub_float] = true;
             float_func[mul_float] = true;
             float_func[div_float] = true;
+            float_func[min_float] = true;
+            float_func[max_float] = true;
             float_func[add_float_fast] = true;
             float_func[sub_float_fast] = true;
             float_func[mul_float_fast] = true;
             float_func[div_float_fast] = true;
+            float_func[min_float_fast] = true;
+            float_func[max_float_fast] = true;
             float_func[fma_float] = true;
             float_func[muladd_float] = true;
             float_func[eq_float] = true;
@@ -668,16 +672,23 @@ static jl_cgval_t generic_cast(
     uint32_t nb = jl_datatype_size(jlto);
     Type *to = bitstype_to_llvm((jl_value_t*)jlto, ctx.builder.getContext(), true);
     Type *vt = bitstype_to_llvm(v.typ, ctx.builder.getContext(), true);
-    if (toint)
-        to = INTT(to, DL);
-    else
-        to = FLOATT(to);
-    if (fromint)
-        vt = INTT(vt, DL);
-    else
-        vt = FLOATT(vt);
+
+    // fptrunc fpext depend on the specific floating point format to work
+    // correctly, and so do not pun their argument types.
+    if (!(f == fpext || f == fptrunc)) {
+        if (toint)
+            to = INTT(to, DL);
+        else
+            to = FLOATT(to);
+        if (fromint)
+            vt = INTT(vt, DL);
+        else
+            vt = FLOATT(vt);
+    }
+
     if (!to || !vt)
         return emit_runtime_call(ctx, f, argv, 2);
+
     Value *from = emit_unbox(ctx, vt, v, v.typ);
     if (!CastInst::castIsValid(Op, from, to))
         return emit_runtime_call(ctx, f, argv, 2);
@@ -1490,6 +1501,34 @@ static Value *emit_untyped_intrinsic(jl_codectx_t &ctx, intrinsic f, ArrayRef<Va
     case sub_float: return math_builder(ctx)().CreateFSub(x, y);
     case mul_float: return math_builder(ctx)().CreateFMul(x, y);
     case div_float: return math_builder(ctx)().CreateFDiv(x, y);
+    case min_float: {
+        assert(x->getType() == y->getType());
+        FunctionCallee minintr = Intrinsic::getDeclaration(jl_Module, Intrinsic::minimum, ArrayRef<Type*>(t));
+        return ctx.builder.CreateCall(minintr, {x, y});
+    }
+    case max_float: {
+        assert(x->getType() == y->getType());
+        FunctionCallee maxintr = Intrinsic::getDeclaration(jl_Module, Intrinsic::maximum, ArrayRef<Type*>(t));
+        return ctx.builder.CreateCall(maxintr, {x, y});
+    }
+    case min_float_fast: {
+        assert(x->getType() == y->getType());
+        FunctionCallee minintr = Intrinsic::getDeclaration(jl_Module, Intrinsic::minimum, ArrayRef<Type*>(t));
+        auto call = ctx.builder.CreateCall(minintr, {x, y});
+        auto fmf = call->getFastMathFlags();
+        fmf.setFast();
+        call->copyFastMathFlags(fmf);
+        return call;
+    }
+    case max_float_fast: {
+        assert(x->getType() == y->getType());
+        FunctionCallee maxintr = Intrinsic::getDeclaration(jl_Module, Intrinsic::maximum, ArrayRef<Type*>(t));
+        auto call = ctx.builder.CreateCall(maxintr, {x, y});
+        auto fmf = call->getFastMathFlags();
+        fmf.setFast();
+        call->copyFastMathFlags(fmf);
+        return call;
+    }
     case add_float_fast: return math_builder(ctx, true)().CreateFAdd(x, y);
     case sub_float_fast: return math_builder(ctx, true)().CreateFSub(x, y);
     case mul_float_fast: return math_builder(ctx, true)().CreateFMul(x, y);

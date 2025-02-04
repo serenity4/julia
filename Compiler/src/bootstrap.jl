@@ -15,6 +15,7 @@ function activate_codegen!()
     end)
 end
 
+global bootstrapping_compiler::Bool = false
 function bootstrap!()
     global bootstrapping_compiler = true
     let time() = ccall(:jl_clock_now, Float64, ())
@@ -90,6 +91,6 @@ function activate!(; reflection=true, codegen=false)
         Base.REFLECTION_COMPILER[] = Compiler
     end
     if codegen
-        activate_codegen!()
+        bootstrap!()
     end
 end

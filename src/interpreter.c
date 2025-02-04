@@ -251,22 +251,15 @@ static jl_value_t *eval_value(jl_value_t *e, interpreter_state *s)
     else if (head == jl_isdefined_sym) {
         jl_value_t *sym = args[0];
         int defined = 0;
-        int allow_import = 1;
-        if (nargs == 2) {
-            assert(jl_is_bool(args[1]) && "malformed IR");
-            allow_import = args[1] == jl_true;
-        }
+        assert(nargs == 1 && "malformed IR");
         if (jl_is_slotnumber(sym) || jl_is_argument(sym)) {
             ssize_t n = jl_slot_number(sym);
             if (src == NULL || n > jl_source_nslots(src) || n < 1 || s->locals == NULL)
                 jl_error("access to invalid slot number");
             defined = s->locals[n - 1] != NULL;
         }
-        else if (jl_is_globalref(sym)) {
-            defined = jl_boundp(jl_globalref_mod(sym), jl_globalref_name(sym), allow_import);
-        }
-        else if (jl_is_symbol(sym)) {
-            defined = jl_boundp(s->module, (jl_sym_t*)sym, allow_import);
+        else if (jl_is_globalref(sym) || jl_is_symbol(sym)) {
+            jl_error("[Internal Error]: :isdefined on globalref should use `isdefinedglobal`");
         }
         else if (jl_is_expr(sym) && ((jl_expr_t*)sym)->head == jl_static_parameter_sym) {
             ssize_t n = jl_unbox_long(jl_exprarg(sym, 0));
@@ -547,6 +540,9 @@ static jl_value_t *eval_body(jl_array_t *stmts, interpreter_state *s, size_t ip,
             s->locals[jl_source_nslots(s->src) + ip] = jl_box_ulong(jl_excstack_state(ct));
             if (jl_enternode_scope(stmt)) {
                 jl_value_t *scope = eval_value(jl_enternode_scope(stmt), s);
+                // GC preserve the scope, since it is not rooted in the `jl_handler_t *`
+                // and may be removed from jl_current_task by any nested block and then
+                // replaced later
                 JL_GC_PUSH1(&scope);
                 ct->scope = scope;
                 if (!jl_setjmp(__eh.eh_ctx, 1)) {
@@ -613,8 +609,11 @@ static jl_value_t *eval_body(jl_array_t *stmts, interpreter_state *s, size_t ip,
                     // equivalent to jl_pop_handler(hand_n_leave), longjmping
                     // to the :enter code above instead, which handles cleanup
                     jl_handler_t *eh = ct->eh;
-                    while (--hand_n_leave > 0)
+                    while (--hand_n_leave > 0) {
+                        // pop GC frames for any skipped handlers
+                        ct->gcstack = eh->gcstack;
                         eh = eh->prev;
+                    }
                     // leave happens during normal control flow, but we must
                     // longjmp to pop the eval_body call for each enter.
                     s->continue_at = next_ip;
