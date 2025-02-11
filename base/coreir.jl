@@ -14,8 +14,8 @@ Core.Const
 """
     struct PartialStruct
         typ
-        defined::BitVector # sorted list of fields that are known to be defined
-        fields::Vector{Any} # i-th element describes the lattice element for the i-th defined field
+        undef::BitVector # indicates which fields may be undefined
+        fields::Vector{Any} # i-th element holds the lattice element corresponding to the i-th field
     end
 
 This extended lattice element is introduced when we have information about an object's
@@ -24,41 +24,50 @@ some elements are known to be constants or a struct whose `Any`-typed field is i
 with `Int` values.
 
 - `typ` indicates the type of the object
-- `defined` records which fields are defined
+- `undef` records which fields are possibly undefined (`true`) or guaranteed to be defined (`false`), if `typ` is a struct
 - `fields` holds the lattice elements corresponding to each defined field of the object
-
-If `typ` is a struct, `defined` represents whether the corresponding field of the struct is guaranteed to be
-initialized. For any defined field (`defined[i] === true`), there is a corresponding `fields` element
-which provides information about the type of the defined field.
 
 If `typ` is a tuple, the last element of `fields` may be `Vararg`. In this case, it is
 guaranteed that the number of elements in the tuple is at least `length(fields)-1`, but the
-exact number of elements is unknown (`defined` then has a length of `length(fields)-1`).
+exact number of elements is unknown.
+
+To represent that a field is guaranteed to be undefined, the corresponding entry in `fields` should be `Union{}`.
 """
 Core.PartialStruct
 
 function Core.PartialStruct(@nospecialize(typ), fields::Vector{Any})
-    ndef = lastindex(fields)
-    fields[end] === Vararg && (ndef -= 1)
+    nf = length(fields)
+    fields[end] === Vararg && (nf -= 1)
     t = typ
     (isa(t, UnionAll) || isa(t, Union)) && (t = argument_datatype(t))
-    nfields = isa(t, DataType) ? datatype_fieldcount(t) : nothing
-    if nfields === nothing || nfields == ndef
-        defined = trues(ndef)
-    else
-        @assert nfields ≥ ndef
-        defined = falses(nfields)
-        for i in 1:ndef
-            defined[i] = true
+    if isa(t, DataType)
+        fldcount = isa(t, DataType) ? datatype_fieldcount(t) : nf
+        undef = trues(fldcount)
+        if fldcount > nf
+            fields = Any[get(fields, i, Any) for i in 1:fldcount]
         end
+        if isdefined(@__MODULE__(), :datatype_min_ninitialized)
+            for i in 1:datatype_min_ninitialized(t)
+                undef[i] = false
+            end
+        end
+    else
+        undef = trues(nf)
     end
-    Core._PartialStruct(typ, defined, fields)
+    # if nfields === nothing || nfields == ndef
+    #     undef = trues(ndef)
+    # else
+    #     @assert nfields > ndef
+    #     undef = trues(nfields)
+    #     for i in 1:ndef undef[i] = true end
+    # end
+    Core._PartialStruct(typ, undef, fields)
 end
 
-(==)(a::PartialStruct, b::PartialStruct) = a.typ === b.typ && a.defined == b.defined && a.fields == b.fields
+(==)(a::PartialStruct, b::PartialStruct) = a.typ === b.typ && a.undef == b.undef && a.fields == b.fields
 
 function Base.getproperty(pstruct::Core.PartialStruct, name::Symbol)
-    name === :defined && return getfield(pstruct, :defined)::BitVector
+    name === :undef && return getfield(pstruct, :undef)::BitVector
     getfield(pstruct, name)
 end
 
