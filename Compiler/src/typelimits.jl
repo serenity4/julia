@@ -329,6 +329,13 @@ end
 maybeundef_fields(pstruct::PartialStruct) = pstruct.undef
 is_field_defined(pstruct::PartialStruct, fi) = fi ≤ length(pstruct.undef) && pstruct.undef[fi]
 
+# Returns an iterator over contiguously defined fields
+function defined_fields(pstruct::PartialStruct)
+    i = findfirst(pstruct.undef)
+    i === nothing && return pstruct.fields
+    Any[pstruct.fields[i] for i in 1:(i - 1)]
+end
+
 function define_field(pstruct::PartialStruct, fi, @nospecialize(ft))
     undef = copy(pstruct.undef)
     fields = copy(pstruct.fields)
@@ -386,7 +393,6 @@ end
     typea === typeb && return true
     if typea isa PartialStruct
         aty = widenconst(typea)
-        isa(typeb, Const) || isa(typeb, PartialStruct) || return false
         if typeb isa Const
             @assert length(typea.fields) ≤ n_initialized(typeb) "typeb ⊑ typea is assumed"
         elseif typeb isa PartialStruct
@@ -649,7 +655,7 @@ end
         all(maybeundef) && return nothing
         nflds = length(maybeundef)
         fields = Vector{Any}(undef, nflds)
-        anyrefine = !any(maybeundef) || findfirst(maybeundef) > 1 + datatype_min_ninitialized(aty)
+        anyrefine = something(findfirst(maybeundef), nflds + 1) > datatype_min_ninitialized(aty) + 1
         for i = 1:nflds
             ai = getfield_tfunc(𝕃, typea, Const(i))
             bi = getfield_tfunc(𝕃, typeb, Const(i))

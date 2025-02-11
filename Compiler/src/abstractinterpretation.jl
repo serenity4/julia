@@ -2149,16 +2149,15 @@ function form_partially_defined_struct(@nospecialize(obj), @nospecialize(name))
     fldidx = try_compute_fieldidx(objt, name.val)
     fldidx === nothing && return nothing
     isa(obj, PartialStruct) && return define_field(obj, fldidx, fieldtype(objt0, fldidx))
-    nminflds = datatype_min_ninitialized(objt)
-    fldidx > nminflds || return nothing
-    fields = collect(Any, fieldtypes(objt0))
-    nflds = length(fields)
-    nmaxflds = max(something(datatype_fieldcount(objt), fldidx), nflds)
-    for i in 1:(nmaxflds - nflds)  push!(fields, Any) end
-    undef = trues(nmaxflds)
-    for i in 1:nminflds undef[i] = false end
-    undef[fldidx] = false
-    return PartialStruct(fallback_lattice, objt0, undef, fields)
+    nminfld = datatype_min_ninitialized(objt)
+    fldidx > nminfld || return nothing
+    fields = Any[fieldtype(objt0, i) for i in 1:nminfld]
+    nmaxfld = something(datatype_fieldcount(objt), fldidx)
+    defined = falses(nmaxfld)
+    for i in 1:nminfld defined[i] = true end
+    defined[fldidx] = true
+    push!(fields, fieldtype(objt0, fldidx))
+    return PartialStruct(fallback_lattice, objt0, defined, fields)
 end
 
 function abstract_call_unionall(interp::AbstractInterpreter, argtypes::Vector{Any}, call::CallMeta)

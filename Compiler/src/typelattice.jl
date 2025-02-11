@@ -762,5 +762,5 @@ function Core.PartialStruct(::AbstractLattice, @nospecialize(typ), undef::BitVec
     for i = 1:length(fields)
         assert_nested_slotwrapper(fields[i])
     end
-    return Core._PartialStruct(typ, undef, fields)
+    return Core.PartialStruct(typ, undef, fields)
 end

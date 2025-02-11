@@ -35,17 +35,28 @@ To represent that a field is guaranteed to be undefined, the corresponding entry
 """
 Core.PartialStruct
 
+function Core.PartialStruct(@nospecialize(typ), undef::BitVector, fields::Vector{Any})
+    validate_partial_struct(typ, undef, fields)
+    Core._PartialStruct(typ, undef, fields)
+end
+
+function validate_partial_struct(@nospecialize(typ), undef, fields)
+    @assert length(undef) ≥ length(fields)
+    @assert isa(typ, DataType)
+    if isdefined(@__MODULE__(), :datatype_min_ninitialized)
+        @assert all(!undef[i] for i in 1:datatype_min_ninitialized(t))
+    end
+end
+
 function Core.PartialStruct(@nospecialize(typ), fields::Vector{Any})
     nf = length(fields)
     fields[end] === Vararg && (nf -= 1)
-    t = typ
-    (isa(t, UnionAll) || isa(t, Union)) && (t = argument_datatype(t))
-    if isa(t, DataType)
-        fldcount = isa(t, DataType) ? datatype_fieldcount(t) : nf
+    if isa(typ, DataType)
+        fldcount = datatype_fieldcount(typ)
         undef = trues(fldcount)
-        if fldcount > nf
-            fields = Any[get(fields, i, Any) for i in 1:fldcount]
-        end
+        # if fldcount > nf
+        #     fields = Any[get(fields, i, Any) for i in 1:fldcount]
+        # end
         if isdefined(@__MODULE__(), :datatype_min_ninitialized)
             for i in 1:datatype_min_ninitialized(t)
                 undef[i] = false
@@ -61,7 +72,7 @@ function Core.PartialStruct(@nospecialize(typ), fields::Vector{Any})
     #     undef = trues(nfields)
     #     for i in 1:ndef undef[i] = true end
     # end
-    Core._PartialStruct(typ, undef, fields)
+    Core.PartialStruct(typ, undef, fields)
 end
 
 (==)(a::PartialStruct, b::PartialStruct) = a.typ === b.typ && a.undef == b.undef && a.fields == b.fields
