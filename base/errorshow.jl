@@ -740,15 +740,37 @@ function parentmodule_before_main(m::Module)
 end
 parentmodule_before_main(x) = parentmodule_before_main(parentmodule(x))
 
+struct LastShownLineInfos
+    lock::ReentrantLock
+    infos::Vector{Tuple{String,Int}}
+end
+
+const LAST_SHOWN_LINE_INFOS = LastShownLineInfos(ReentrantLock(), Tuple{String,Int}[])
+function get_last_shown_line_infos()
+    linfo = LAST_SHOWN_LINE_INFOS
+    return @lock linfo.lock copy(linfo.infos)
+end
+function set_last_shown_line_infos(infos)
+    linfo = LAST_SHOWN_LINE_INFOS
+    return @lock linfo.lock append!(empty!(linfo.infos), infos)
+end
+function empty_last_shown_line_infos()
+    linfo = LAST_SHOWN_LINE_INFOS
+    return @lock linfo.lock empty!(linfo.infos)
+end
+function add_last_shown_line_info(info::Tuple{String,Int})
+    linfo = LAST_SHOWN_LINE_INFOS
+    return @lock linfo.lock push!(linfo.infos, info)
+end
+register_line_infos(io) = get(io, :register_line_infos, true)::Bool
+
 # Print a stack frame where the module color is set manually with `modulecolor`.
 function print_stackframe(io, i, frame::StackFrame, n::Int, ndigits_max, modulecolor)
     file, line = string(frame.file), frame.line
 
     # Used by the REPL to make it possible to open
     # the location of a stackframe/method in the editor.
-    if haskey(io, :last_shown_line_infos)
-        push!(io[:last_shown_line_infos], (string(frame.file), frame.line))
-    end
+    register_line_infos(io) && add_last_shown_line_info((string(frame.file), frame.line))
 
     inlined = getfield(frame, :inlined)
     modul = parentmodule(frame)
@@ -794,10 +816,6 @@ function print_module_path_file(io, modul, file, line; modulecolor = :light_blac
 end
 
 function show_backtrace(io::IO, t::Vector)
-    if haskey(io, :last_shown_line_infos)
-        empty!(io[:last_shown_line_infos])
-    end
-
     # t is a pre-processed backtrace (ref #12856)
     if t isa Vector{Any}
         filtered = t
@@ -814,9 +832,10 @@ function show_backtrace(io::IO, t::Vector)
         end
     end
 
+    register_line_infos(io) && empty_last_shown_line_infos()
+
     if length(filtered) > BIG_STACKTRACE_SIZE
         show_reduced_backtrace(IOContext(io, :backtrace => true), filtered)
-        return
     else
         try invokelatest(update_stackframes_callback[], filtered) catch end
         # process_backtrace returns a Vector{Tuple{Frame, Int}}

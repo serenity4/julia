@@ -672,15 +672,6 @@ function complete_line(c::LatexCompletions, s; hint::Bool=false)
 end
 
 with_repl_linfo(f, repl) = f(outstream(repl))
-function with_repl_linfo(f, repl::LineEditREPL)
-    linfos = Tuple{String,Int}[]
-    io = IOContext(outstream(repl), :last_shown_line_infos => linfos)
-    f(io)
-    if !isempty(linfos)
-        repl.last_shown_line_infos = linfos
-    end
-    nothing
-end
 
 mutable struct REPLHistoryProvider <: HistoryProvider
     history::Vector{String}
@@ -1454,7 +1445,7 @@ function setup_interface(
         # This is accessing a contextual variable that gets set in
         # the show_backtrace and show_method_table functions.
         "^Q" => (s::MIState, o...) -> begin
-            linfos = repl.last_shown_line_infos
+            linfos = Base.get_last_shown_line_infos()
             str = String(take!(LineEdit.buffer(s)))
             n = tryparse(Int, str)
             n === nothing && @goto writeback
