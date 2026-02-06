@@ -1840,19 +1840,21 @@ static unsigned typekeyvalue_hash(jl_typename_t *tn, jl_value_t *key1, jl_value_
     return hash ? hash : 1;
 }
 
-int jl_is_type_valid_for_concrete_subtype(jl_value_t *dt) {
-    if (!dt)
+static int jl_is_type_valid_for_concrete_subtype(jl_value_t *v) {
+    if (!v)
+        return 1; // NULL can appear for unresolved Vararg T, treat conservatively as valid
+    if (jl_is_typevar(v))
+        v = ((jl_tvar_t*)v)->ub;
+    if (!v || v == jl_bottom_type)
         return 0;
-    if (jl_is_typevar(dt))
-        dt = ((jl_tvar_t*)dt)->ub;
-    if (dt == jl_bottom_type || (dt && !jl_is_type(dt)))
+    if (!jl_is_type(v))
         return 0;
     return 1;
 }
 
-// set the `has_concrete_subtype` flag of `dt` to zero for type parameters
-// that are illegal for certain types
-int jl_are_tparams_valid_for_concrete_subtype(jl_datatype_t *dt) {
+// Check type parameters that are required to be types for certain special types.
+// Returns 0 if the type cannot have any concrete subtype based on its type parameters alone.
+static int jl_are_tparams_valid_for_concrete_subtype(jl_datatype_t *dt) {
     if (dt->name == jl_type_typename) {
         jl_value_t *t = jl_tparam0(dt);
         if (t && !jl_is_type(t) && !jl_is_typevar(t))
@@ -2882,13 +2884,16 @@ jl_vararg_t *jl_wrap_vararg(jl_value_t *t, jl_value_t *n, int check, int nothrow
     return vm;
 }
 
-// compute a conservative estimate of whether there could exist an instance of a subtype of this
+// Compute a conservative estimate of whether there could exist an instance of a subtype of this,
+// based on the computed field types.
 void jl_compute_has_concrete_subtype_from_fields(jl_datatype_t *dt) {
+    if (dt->types == NULL)
+        return;
     size_t nfields = jl_svec_len(dt->types);
     for (size_t i = 0; dt->has_concrete_subtype && i < nfields - dt->name->n_uninitialized; i++) {
         jl_value_t *fld = jl_svecref(dt->types, i);
         dt->has_concrete_subtype = jl_is_type_valid_for_concrete_subtype(fld);
-        if (jl_is_datatype(fld))
+        if (dt->has_concrete_subtype && jl_is_datatype(fld))
             dt->has_concrete_subtype &= jl_are_tparams_valid_for_concrete_subtype((jl_datatype_t*)fld);
     }
 }
